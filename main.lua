@@ -24,6 +24,8 @@ function init()
 
 	primary_shoot_timer = 0
 	secondary_shoot_timer = 0
+	primary_shoot_delay = 1
+	-- secondary_shoot_delay = 0.5
 	-- prevent shooting while the player is grabbing things, etc
 	shoot_lock = false
 
@@ -57,7 +59,7 @@ function draw(dt)
 		UiTextOutline(0,0,0,1,0.5)
 		UiColor(1,1,1)
 		UiText("Left click to place booster", true)
-		UiText("Right click for ignition", true)
+		UiText(KEY.IGNITION.key.." for ignition toggle", true)
 		UiText(KEY.OPTIONS.key.." for booster options", true)
 		UiText(KEY.DEBUG.key.." for physics debug")
 	UiPop()
@@ -319,7 +321,7 @@ end
 function handle_input(dt)
 	if editing_options then return end
 	primary_shoot_timer = math.max(primary_shoot_timer - dt, 0)
-	secondary_shoot_timer = math.max(secondary_shoot_timer - dt, 0)
+	-- secondary_shoot_timer = math.max(secondary_shoot_timer - dt, 0)
 
 	if GetString("game.player.tool") == REG.TOOL_KEY  then 
 		if GetPlayerVehicle() == 0 then 
@@ -338,18 +340,14 @@ function handle_input(dt)
 				primary_shoot_timer == 0 and
 				InputDown("LMB") and 
 				not InputDown("RMB") then
-					if P_BOOSTER.body == nil then 
-						spawn_booster()
-					end
+					respawn_booster()
+					primary_shoot_timer = primary_shoot_delay
 				end
 				
-				-- secondary fire
-				if not shoot_lock and
-				GetPlayerGrabShape() == 0 and
-				InputDown("RMB") and 
-				not InputDown("LMB") then
+				-- ignition
+				if InputPressed(KEY.IGNITION.key) then
 					if P_BOOSTER.body ~= nil then
-						booster_ignition()
+						booster_ignition_toggle()
 					end
 				end
 			

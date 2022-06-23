@@ -59,7 +59,7 @@ end
 function reset_all_options()
 	-- This is an emergency reset that the main menu option screen uses.
 	-- it does not rely on the TOOL globals being loaded.
-	local option_set_keys = {"general", "bomb", "rocket", "thrower"}
+	local option_set_keys = {"general", "booster"}
 	for i = 1, #option_set_keys do
 		option_set_reset(option_set_keys[i])
 	end
@@ -212,7 +212,18 @@ end
 
 function create_booster_option_set()
 	local oSet = create_mode_option_set("booster", "Booster settings")
-	oSet.physical_damage_factor.value = 0.1
+
+	oSet.impulse = create_mode_option(
+		option_type.numeric, 
+		0.1,
+		"impulse",
+		"Relative impulse")
+	oSet.impulse.range.lower = 0
+	oSet.impulse.range.upper = 1
+	oSet.impulse.step = 0.001
+	oSet.options[#oSet.options + 1] = oSet.impulse
+
+	oSet.physical_damage_factor.value = 0
 	return oSet
 end
 

@@ -32,6 +32,7 @@ end
 
 KEY = {}
 KEY.DEBUG = setup_keybind("Debug mode", "debug mode", "F11")
+KEY.IGNITION = setup_keybind("Ignition toggle", "ignition", "I")
 KEY.STOP_FX = setup_keybind("Stop all effects", "stop_fx", "V")
 KEY.OPTIONS = setup_keybind("Options", "options", "O")
 

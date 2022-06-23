@@ -14,6 +14,7 @@ end
 
 function load_option_sets()
 	TOOL.GENERAL = load_option_set("general", true)
+    PYRO.RAINBOW_MODE = TOOL.GENERAL.rainbow_mode.value == on_off.on
 	TOOL.BOOSTER = load_option_set("booster", true)
     init_pyro(TOOL.BOOSTER)
     all_option_sets = {TOOL.BOOSTER, TOOL.GENERAL}
@@ -28,10 +29,10 @@ function init_pyro(tool)
     pyro.ff.bias = Vec(0, 1, 0)
     if tool == TOOL.BOOSTER then 
         pyro.fade_magnitude = 2
-        pyro.hot_particle_size = 0.4
+        pyro.hot_particle_size = 0.2
         pyro.cool_particle_size = 0.4
-        pyro.impulse_radius = 0.8
-        pyro.impulse_scale = 10
+        pyro.impulse_radius = 1
+        pyro.impulse_scale = 20 * tool.impulse.value
         pyro.smoke_life = 1
         pyro.smoke_amount_n = 0.02
         pyro.max_player_hurt = 0.1
@@ -39,7 +40,7 @@ function init_pyro(tool)
         pyro.flame_light_intensity = 2
         pyro.fire_ignition_radius = 1.5
         pyro.fire_density = 5
-        pyro.max_flames = 600
+        pyro.max_flames = 300
         pyro.flame_puff_life = 1
         pyro.ff.dir_jitter = 0.0
         pyro.ff.bias = Vec(0, -1, 0)
@@ -48,7 +49,7 @@ function init_pyro(tool)
         pyro.ff.use_metafield = false
         pyro.ff.max_sim_points = 500
         pyro.ff.point_max_life = 1
-        pyro.ff.graph.max_force = 100
+        pyro.ff.graph.max_force = 1000
         pyro.ff.graph.curve = curve_type.linear
         pyro.ff.graph.extend_scale = 1.5
         pyro.ff.graph.dead_force = 0.2

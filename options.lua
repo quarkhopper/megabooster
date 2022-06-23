@@ -3,6 +3,7 @@
 
 function init()
     keybind_options = {
+        KEY.IGNITION,
         KEY.STOP_FX,
         KEY.OPTIONS,
         KEY.DEBUG}
