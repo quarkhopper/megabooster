@@ -3,13 +3,7 @@
 
 function init()
     keybind_options = {
-        KEY.PLANT_BOMB, 
-        KEY.DETONATE, 
-        KEY.STOP_FIRE, 
-        KEY.OPTIONS, 
-        KEY.RANDOM_BOOM, 
-        KEY.BOOSTER,
-        KEY.ACTION_MOVIE, 
+        KEY.STOP_FX,
         KEY.DEBUG}
     updating_key = nil
 end
@@ -20,7 +14,7 @@ function draw()
         UiTranslate(UiCenter(), 200)
         UiAlign("center middle")
         UiFont("bold.ttf", 40)
-        UiText("Pyromania Keybinds", true)
+        UiText("MegaBooster Keybinds", true)
         UiText("Press a key to change the binding", true)
         UiText("Press esc to exit")
 

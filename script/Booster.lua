@@ -10,6 +10,18 @@ P_BOOSTER.burn_radius = 0.5
 vert_dir = 1
 -- boom_sound = LoadSound("MOD/snd/toiletBoom.ogg")
 
+function spawn_booster()
+	local camera = GetPlayerCameraTransform()
+	local shoot_dir = TransformToParentVec(camera, Vec(0, 0, -1))
+	local rotx, roty, rotz = GetQuatEuler(camera.rot)
+	local hit, dist = QueryRaycast(camera.pos, shoot_dir, 100, 0.025, true)
+	if hit then
+		local hit_point = VecAdd(camera.pos, VecScale(shoot_dir, dist))
+		local trans = Transform(hit_point, QuatEuler(0, roty - 90,0))
+		P_BOOSTER.booster = inst_booster(trans)
+	end
+end
+
 function inst_booster(trans)
     local inst = {}
     inst.trans = trans
@@ -29,12 +41,10 @@ function booster_tick(dt)
             local t_dir = nil
             t_dir = Vec(0,vert_dir,0)
             vert_dir = -1 * vert_dir
-            -- local w_dir = VecNormalize(TransformToParentPoint(P_BOOSTER.booster.trans, t_dir)) 
             local dir = VecNormalize(random_vec(1))
             local w_pos = VecAdd(w_locus, VecScale(dir, P_BOOSTER.burn_radius))
-            local force_vec = VecScale(dir, BOOST_FIELD.ff.graph.max_force)
-            apply_force(BOOST_FIELD.ff, w_pos, force_vec)
-            -- apply_force(BOOST_FIELD.ff, w_locus, VecScale(w_dir, BOOST_FIELD.ff.graph.max_force))
+            local force_vec = VecScale(dir, TOOL.BOOSTER.pyro.ff.graph.max_force)
+            apply_force(TOOL.BOOSTER.pyro.ff, w_pos, force_vec)
             -- DebugCross(w_pos)
             P_BOOSTER.injection_timer = P_BOOSTER.injection_rate
         end

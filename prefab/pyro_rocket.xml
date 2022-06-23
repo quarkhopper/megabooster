@@ -1,7 +1,0 @@
-<prefab version="0.5.4">
-	<group id_="1311586956" open_="true" pos="0.0 0.0 0.0" rot="0.0 0.0 0.0">
-		<body id_="1724881664" open_="true" tags="pyro_rocket" pos="0.0 0.0 0.0" dynamic="false">
-			<vox id_="628987392" open_="true" tags="pyro_rocket nocull" pos="0 0 0" rot="0.0 0.0 0.0" file="MOD/vox/pyro_rocket.vox"/>
-		</body>
-	</group>
-</prefab>

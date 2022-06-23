@@ -5,17 +5,13 @@
 #include "script/Migrations.lua"
 #include "script/PyroField.lua"
 #include "script/InitTools.lua"
-#include "script/Bomb.lua"
-#include "script/Thrower.lua"
-#include "script/Rocket.lua"
 #include "script/Booster.lua"
-#include "script/Mapping.lua"
 
 ------------------------------------------------
 -- INIT
 -------------------------------------------------
 function init()
-	RegisterTool(REG.TOOL_KEY, TOOL_NAME, "MOD/vox/thrower.vox", 5)
+	RegisterTool(REG.TOOL_KEY, TOOL_NAME, nil, 5)
 	SetBool("game.tool."..REG.TOOL_KEY..".enabled", true)
 	SetFloat("game.tool."..REG.TOOL_KEY..".ammo", 1000)
 	
@@ -25,17 +21,7 @@ function init()
 	suspend_ticks = false
 
 	rumble_sound = LoadSound("MOD/snd/rumble.ogg")
-	thrower_sound = LoadLoop("MOD/snd/thrower.ogg")
 
-	-- rate per second you're allowed to plant bombs
-	plant_rate = 1
-	plant_timer = 0
-	thruster_spawn_rate = 1
-	thruster_timer = 0
-	boom_timer = 0
-	action_timer = 0
-	action_rate = 3
-	action_mode = false
 	primary_shoot_timer = 0
 	secondary_shoot_timer = 0
 	-- prevent shooting while the player is grabbing things, etc
@@ -43,9 +29,6 @@ function init()
 
 	-- option sets are the paramters for each subtool
 	load_option_sets()
-
-	-- init the field used for shock waves
-	init_shock_field(boomness.tactical, 0.01)
 
 	-- init the booster force field
 	init_boost_field()
@@ -62,17 +45,6 @@ end
 -------------------------------------------------
 
 function draw(dt)
-	if action_mode then 
-		UiPush()
-			UiTranslate(UiCenter(), 27)
-			UiAlign("center")
-			UiFont("bold.ttf", 25)
-			UiTextOutline(0,0,0,1,1)
-			UiColor(1,0,0)
-			UiText("DANGER ! ACTION MOVIE MODE ON ! DANGER")
-		UiPop()
-	end
-
 	if GetString("game.player.tool") ~= REG.TOOL_KEY or
 		GetPlayerVehicle() ~= 0 then return end
 	
@@ -82,42 +54,33 @@ function draw(dt)
 
 	-- on screen display to help the player remember what keys do what
 	UiPush()
-		UiTranslate(0, UiHeight() - UI.OPTION_TEXT_SIZE * 6)
+		UiTranslate(0, UiHeight() - UI.OPTION_TEXT_SIZE * 3)
 		UiAlign("left")
 		UiFont("bold.ttf", UI.OPTION_TEXT_SIZE)
 		UiTextOutline(0,0,0,1,0.5)
 		UiColor(1,1,1)
-		UiText(KEY.PLANT_BOMB.key.." to plant bomb", true)
-		UiText(KEY.DETONATE.key.." to detonate", true)
-		UiText(KEY.OPTIONS.key.." for options", true)
-		UiText(KEY.STOP_FIRE.key.." to stop all flame effects", true)
-		UiText(KEY.RANDOM_BOOM.key.." to randomly explode something in your area", true)
-		UiText(KEY.ACTION_MOVIE.key.. " = DANGER !! ACTION MOVIE MODE ON/OFF")
+		UiText("Left click to place booster", true)
+		UiText("Right click for ignition", true)
+		UiText(KEY.DEBUG.key.." for physics debug")
 	UiPop()
 
 	if DEBUG_MODE then 
 		-- Debug display
 		UiPush()
-				UiTranslate(UiWidth() - 10, UiHeight() - UI.OPTION_TEXT_SIZE * 6)
+				UiTranslate(UiWidth() - 10, UiHeight() - UI.OPTION_TEXT_SIZE * 2 )
 				UiAlign("right")
 				UiFont("bold.ttf", UI.OPTION_TEXT_SIZE)
 				UiTextOutline(0,0,0,1,0.5)
 				UiColor(1,1,1)
-				UiText("bomb energy = "..tostring(TOOL.BOMB.pyro.ff.energy), true)
-				UiText("rocket energy = "..tostring(TOOL.ROCKET.pyro.ff.energy), true)
-				local num_rocket_points = "--"
-				if TOOL.ROCKET.pyro.ff.field.points ~= nil then 
-					num_rocket_points = #TOOL.ROCKET.pyro.ff.field.points
+				UiText("field energy = "..tostring(TOOL.BOOSTER.pyro.ff.energy))
+				local num_field_points = "--"
+				if TOOL.BOOSTER.pyro.ff.field.points ~= nil then 
+					num_field_points = #TOOL.BOOSTER.pyro.ff.field.points
 				end
-				UiText("rocket points = "..tostring(num_rocket_points), true	)
-				UiText("flamethrower energy = "..tostring(TOOL.THROWER.pyro.ff.energy), true)
-				UiText("shockwave energy = "..tostring(SHOCK_FIELD.ff.energy), true)
-				UiText("dt = "..tostring(dt))
+				UiText("field points = "..tostring(num_field_points), true)
 		UiPop()
 	end
 end
-
-
 
 -- draw the option editor
 function draw_option_modal()
@@ -341,40 +304,12 @@ end
 
 function update(dt)
 	if not suspend_ticks then 
-		flame_tick(TOOL.BOMB.pyro, dt)
-		flame_tick(TOOL.THROWER.pyro, dt)
-		flame_tick(TOOL.ROCKET.pyro, dt)
-		flame_tick(SHOCK_FIELD, dt)
-		flame_tick(BOOST_FIELD, dt)
-		rocket_tick(dt)
-		thrower_tick(dt)
-		booster_tick(dt)
+		flame_tick(TOOL.BOOSTER.pyro, dt)
 	end
 end
 
 function tick(dt)
 	handle_input(dt)
-
-	if GetPlayerHealth() == 0 then
-		action_mode = false 
-	end
-
-	if action_mode and
-	#TOOL.BOMB.pyro.flames == 0 then
-		action_timer = action_rate
-		local tries = 1000
-		local player_trans = GetPlayerTransform()
-		while tries > 0 do
-			local dir = VecNormalize(Vec(random_vec_component(1), 0, random_vec_component(1)))
-			local pos = VecAdd(player_trans.pos, VecScale(dir, TOOL.BOMB.min_random_radius.value))
-			local pos = VecAdd(pos, Vec(0, 1, 0))
-			local hit = QueryClosestPoint(pos, 0.5)
-			if not hit then
-				blast_at(pos)
-				break
-			end
-		end
-	end
 end
 
 -------------------------------------------------
@@ -383,62 +318,19 @@ end
 
 function handle_input(dt)
 	if editing_options then return end
-	plant_timer = math.max(plant_timer - dt, 0)
-	thruster_timer = math.max(thruster_timer - dt, 0)
-	boom_timer = math.max(boom_timer - dt, 0)
-	action_timer = math.max(action_timer - dt, 0)
 	primary_shoot_timer = math.max(primary_shoot_timer - dt, 0)
 	secondary_shoot_timer = math.max(secondary_shoot_timer - dt, 0)
 
 	if GetString("game.player.tool") == REG.TOOL_KEY  then 
-		--action mode toggle
-		if InputPressed(KEY.ACTION_MOVIE.key) then
-			action_mode = not action_mode
-		end
 		if GetPlayerVehicle() == 0 then 
 
 			-- options menus
 			if InputPressed(KEY.OPTIONS.key) then 
 				editing_options = true
 			else
-				-- plant bomb
-				if plant_timer == 0 and
-				InputPressed(KEY.PLANT_BOMB.key) then
-					local camera = GetPlayerCameraTransform()
-					local drop_pos = TransformToParentPoint(camera, Vec(0.2, -0.2, -1.25))
-					local bomb = Spawn("MOD/prefab/pyro_bomb.xml", Transform(drop_pos))[2]
-					table.insert(bombs, bomb)
-					plant_timer = plant_rate
-				end
-				
 				-- end all flame effects
-				if InputPressed(KEY.STOP_FIRE.key) then
+				if InputPressed(KEY.STOP_FX.key) then
 					stop_all_flames()
-				end
-			
-				-- detonate bomb
-				if InputPressed(KEY.DETONATE.key) then
-					detonate_all()
-				end
-
-				-- Random boom
-				if boom_timer == 0 and
-				InputPressed(KEY.RANDOM_BOOM.key) then
-					local player_trans = GetPlayerTransform()
-					set_spawn_area_parameters(player_trans.pos, TOOL.BOMB.max_random_radius.value)
-					local boom_pos = find_spawn_location(player_trans.pos, TOOL.BOMB.min_random_radius.value)
-					boom_pos = VecAdd(boom_pos, Vec(spawn_block_h_size/2,0,spawn_block_h_size/2))
-					blast_at(boom_pos)
-					boom_timer = 1
-				end
-
-				-- spawn/launch booster
-				if InputPressed(KEY.BOOSTER.key) then
-					if P_BOOSTER.booster == nil then 
-						spawn_booster()
-					else
-						booster_ignition()
-					end
 				end
 
 				--primary fire
@@ -446,8 +338,11 @@ function handle_input(dt)
 				primary_shoot_timer == 0 and
 				InputDown("LMB") and 
 				not InputDown("RMB") then
-					fire_rocket()
-					primary_shoot_timer = TOOL.ROCKET.rate_of_fire.value
+					if P_BOOSTER.booster == nil then 
+						spawn_booster()
+					else
+						booster_ignition()
+					end
 				end
 				
 				-- secondary fire
@@ -455,12 +350,8 @@ function handle_input(dt)
 				GetPlayerGrabShape() == 0 and
 				InputDown("RMB") and 
 				not InputDown("LMB") then
-					thrower_muzzle_flames()
-					local trans = GetPlayerTransform()
-					PlayLoop(thrower_sound, trans.pos, 50)
-					if secondary_shoot_timer == 0 then
-						shoot_thrower()
-						secondary_shoot_timer = TOOL.THROWER.rate_of_fire.value
+					if P_BOOSTER.booster ~= nil then
+						booster_ignition()
 					end
 				end
 			
@@ -488,24 +379,10 @@ end
 -- Support functions
 -------------------------------------------------
 
-function spawn_booster()
-	local camera = GetPlayerCameraTransform()
-	local shoot_dir = TransformToParentVec(camera, Vec(0, 0, -1))
-	local rotx, roty, rotz = GetQuatEuler(camera.rot)
-	local hit, dist = QueryRaycast(camera.pos, shoot_dir, 100, 0.025, true)
-	if hit then
-		local hit_point = VecAdd(camera.pos, VecScale(shoot_dir, dist))
-		local trans = Transform(hit_point, QuatEuler(0, roty - 90,0))
-		P_BOOSTER.booster = inst_booster(trans)
-	end
-end
+
 
 function stop_all_flames()
-	reset_ff(TOOL.BOMB.pyro.ff)
-	reset_ff(TOOL.THROWER.pyro.ff)
-	reset_ff(TOOL.ROCKET.pyro.ff)
-	reset_ff(SHOCK_FIELD.ff)
-	reset_ff(BOOST_FIELD.ff)
+	reset_ff(TOOL.BOOSTER.pyro.ff)
 	P_BOOSTER.burn_timer = 0
 end
 

@@ -139,6 +139,26 @@ function mode_option_from_string(ser)
 	return option
 end
 
+function create_option_set_by_name(name)
+	if name == "general" then
+		return create_general_option_set()		
+	elseif name == "booster" then 
+		return create_booster_option_set()
+	end
+end
+
+option_type = enum {
+	"numeric",
+	"enum",
+	"bool",
+	"color"
+}
+
+on_off = enum {
+	"off",
+	"on"
+}
+
 function create_general_option_set()
     local oSet = create_option_set()
     oSet.name = "general"
@@ -177,17 +197,9 @@ function create_mode_option_set(name, display_name)
 		"Cool flame color")
 	oSet.options[#oSet.options + 1] = oSet.flame_color_cool
 
-	oSet.boomness = create_mode_option(
-		option_type.enum,
-		boomness.explody,
-		"boomness",
-		"Performance")
-	oSet.boomness.accepted_values = boomness
-	oSet.options[#oSet.options + 1] = oSet.boomness
-
 	oSet.physical_damage_factor = create_mode_option(
 		option_type.numeric, 
-		0.5,
+		0.1,
 		"physical_damage_factor",
 		"Physical damange modifier")
 	oSet.physical_damage_factor.range.lower = 0
@@ -198,143 +210,9 @@ function create_mode_option_set(name, display_name)
     return oSet
 end	
 
-function create_bomb_option_set()
-	local oSet = create_mode_option_set("bomb", "Bomb settings")
-
-	oSet.min_random_radius = create_mode_option(
-		option_type.numeric, 
-		15,
-		"min_random_radius",
-		"Minimum radius of random explosions")
-	oSet.min_random_radius.range.lower = 0
-	oSet.min_random_radius.range.upper = 100
-	oSet.min_random_radius.step = 1
-	oSet.options[#oSet.options + 1] = oSet.min_random_radius
-	
-	oSet.max_random_radius = create_mode_option(
-		option_type.numeric, 
-		30,
-		"max_random_radius",
-		"Maximum radius of random explosions")
-	oSet.max_random_radius.range.lower = 0
-	oSet.max_random_radius.range.upper = 100
-	oSet.max_random_radius.step = 1
-	oSet.options[#oSet.options + 1] = oSet.max_random_radius
-
-	oSet.physical_damage_factor.value = 0.3
-
+function create_booster_option_set()
+	local oSet = create_mode_option_set("booster", "Booster settings")
+	oSet.physical_damage_factor.value = 0.1
 	return oSet
 end
-
-function create_rocket_option_set()
-	local oSet = create_mode_option_set("rocket", "Rocket settings")
-
-	oSet.rate_of_fire = create_mode_option(
-		option_type.numeric, 
-		1,
-		"rate_of_fire",
-		"Rate of fire")
-	oSet.rate_of_fire.range.lower = 0.1
-	oSet.rate_of_fire.range.upper = 1
-	oSet.rate_of_fire.step = 0.1
-	oSet.options[#oSet.options + 1] = oSet.rate_of_fire	
-
-	oSet.speed = create_mode_option(
-		option_type.numeric, 
-		2,
-		"speed",
-		"Speed")
-	oSet.speed.range.lower = 0.1
-	oSet.speed.range.upper = 10
-	oSet.speed.step = 0.1
-	oSet.options[#oSet.options + 1] = oSet.speed	
-
-	oSet.max_dist = create_mode_option(
-		option_type.numeric, 
-		200,
-		"max_dist",
-		"Max flight distance")
-	oSet.max_dist.range.lower = 10
-	oSet.max_dist.range.upper = 500
-	oSet.max_dist.step = 1
-	oSet.options[#oSet.options + 1] = oSet.max_dist	
-
-	oSet.physical_damage_factor.value = 0.5
-
-	return oSet
-end
-
-function create_thrower_option_set()
-	local oSet = create_mode_option_set("thrower", "Thrower settings")
-
-	oSet.rate_of_fire = create_mode_option(
-		option_type.numeric, 
-		0.05,
-		"rate_of_fire",
-		"Rate of fire")
-	oSet.rate_of_fire.range.lower = 0.01
-	oSet.rate_of_fire.range.upper = 1
-	oSet.rate_of_fire.step = 0.01
-	oSet.options[#oSet.options + 1] = oSet.rate_of_fire	
-
-	oSet.speed = create_mode_option(
-		option_type.numeric, 
-		1,
-		"speed",
-		"Spray velocity")
-	oSet.speed.range.lower = 0.1
-	oSet.speed.range.upper = 10
-	oSet.speed.step = 0.1
-	oSet.options[#oSet.options + 1] = oSet.speed
-
-	oSet.max_dist = create_mode_option(
-		option_type.numeric, 
-		50,
-		"max_dist",
-		"Max distance")
-	oSet.max_dist.range.lower = 10
-	oSet.max_dist.range.upper = 500
-	oSet.max_dist.step = 1
-	oSet.options[#oSet.options + 1] = oSet.max_dist	
-
-	-- default values
-	oSet.flame_color_hot.value = Vec(7.5, 0.9, 0.6)
-	oSet.speed.value = 0.6
-	oSet.physical_damage_factor.value = 0.05
-
-	return oSet
-end
-
-function create_option_set_by_name(name)
-	if name == "general" then
-		return create_general_option_set()		
-	elseif name == "bomb" then 
-		return create_bomb_option_set()
-	elseif name == "rocket" then 
-		return create_rocket_option_set()
-	elseif name == "thrower" then 
-		return create_thrower_option_set()
-	end
-end
-
-option_type = enum {
-	"numeric",
-	"enum",
-	"bool",
-	"color"
-}
-
-on_off = enum {
-	"off",
-	"on"
-}
-
-boomness = enum {
-	"invisible",
-	"economy",
-	"explody",
-	"tactical",
-	"vaporizing",
-	"nuclear",
-}
 
