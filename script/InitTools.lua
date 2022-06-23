@@ -59,5 +59,5 @@ function init_pyro(tool)
         pyro.ff.graph.hot_prop_angle = 30
         pyro.ff.graph.cool_prop_angle = 60
     end
-    return pyro
+    tool.pyro = pyro
 end

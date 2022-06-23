@@ -30,9 +30,6 @@ function init()
 	-- option sets are the paramters for each subtool
 	load_option_sets()
 
-	-- init the booster force field
-	init_boost_field()
-
 	-- true while the player has the options editor open
 	editing_options = false
 	option_page = 1
@@ -54,13 +51,14 @@ function draw(dt)
 
 	-- on screen display to help the player remember what keys do what
 	UiPush()
-		UiTranslate(0, UiHeight() - UI.OPTION_TEXT_SIZE * 3)
+		UiTranslate(0, UiHeight() - UI.OPTION_TEXT_SIZE * 4)
 		UiAlign("left")
 		UiFont("bold.ttf", UI.OPTION_TEXT_SIZE)
 		UiTextOutline(0,0,0,1,0.5)
 		UiColor(1,1,1)
 		UiText("Left click to place booster", true)
 		UiText("Right click for ignition", true)
+		UiText(KEY.OPTIONS.key.." for booster options", true)
 		UiText(KEY.DEBUG.key.." for physics debug")
 	UiPop()
 
@@ -304,7 +302,9 @@ end
 
 function update(dt)
 	if not suspend_ticks then 
+		if TOOL.BOOSTER.pyro == nil then suspend_ticks = true end
 		flame_tick(TOOL.BOOSTER.pyro, dt)
+		booster_tick(dt)
 	end
 end
 
@@ -338,10 +338,8 @@ function handle_input(dt)
 				primary_shoot_timer == 0 and
 				InputDown("LMB") and 
 				not InputDown("RMB") then
-					if P_BOOSTER.booster == nil then 
+					if P_BOOSTER.body == nil then 
 						spawn_booster()
-					else
-						booster_ignition()
 					end
 				end
 				
@@ -350,7 +348,7 @@ function handle_input(dt)
 				GetPlayerGrabShape() == 0 and
 				InputDown("RMB") and 
 				not InputDown("LMB") then
-					if P_BOOSTER.booster ~= nil then
+					if P_BOOSTER.body ~= nil then
 						booster_ignition()
 					end
 				end
