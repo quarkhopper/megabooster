@@ -207,17 +207,10 @@ function propagate_point_force(ff, point, trans_dir, dt)
                 -- log the contact, don't create a new extension
                 local hit_point = VecAdd(point.pos, VecScale(trans_dir, dist))
                 table.insert(ff.contacts, inst_field_contact(point, hit_point, normal, shape))
-                -- redirect a vector parallel to the surface
-                -- when directly opposed to the normal of the impacted surface the 
-                -- abs value dot product (for unit vectors) will be 1. This is when 
-                -- the force vector will be directly annihilated. parallel to the
-                -- surface will be 0, and the force vector is not redirected at all 
-                local redirection_factor = math.abs(VecDot(normal, trans_dir))
-                local new_vec =  VecAdd(point.vec, VecScale(normal, point.mag * redirection_factor))
-                -- readjust as this sometimes results in added energy. 
-                local new_vec = VecScale(VecNormalize(new_vec), math.min(point.mag, VecLength(new_vec)))
+                local new_dir = VecNormalize(VecAdd(normal, trans_dir))
+                local new_vec = VecScale(new_dir, point.trans_mag)
                 set_point_vec(point, new_vec)
-            else -- if point.mag > ff.extend_force then 
+            else
                 -- create the point in the new space
                 point_prime = inst_field_point(coord_prime, ff.resolution)
                 point_prime.life_timer = point.life_timer

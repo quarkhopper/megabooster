@@ -31,7 +31,7 @@ function init_pyro(tool)
         pyro.fade_magnitude = 2
         pyro.hot_particle_size = 0.2
         pyro.cool_particle_size = 0.4
-        pyro.impulse_radius = 1
+        pyro.impulse_radius = 1.5
         pyro.impulse_scale = 20 * tool.impulse.value
         pyro.smoke_life = 1
         pyro.smoke_amount_n = 0.02
@@ -45,18 +45,18 @@ function init_pyro(tool)
         pyro.ff.dir_jitter = 0.0
         pyro.ff.bias = Vec(0, -1, 0)
         pyro.ff.bias_gain = 0
-        pyro.ff.resolution = 0.1
+        pyro.ff.resolution = 0.2
         pyro.ff.use_metafield = false
         pyro.ff.max_sim_points = 500
-        pyro.ff.point_max_life = 1
-        pyro.ff.graph.max_force = 1000
+        pyro.ff.point_max_life = 2
+        pyro.ff.graph.max_force = 100
         pyro.ff.graph.curve = curve_type.linear
         pyro.ff.graph.extend_scale = 1.5
-        pyro.ff.graph.dead_force = 0.2
-        pyro.ff.graph.hot_transfer = 100
+        pyro.ff.graph.dead_force = 0.1
+        pyro.ff.graph.hot_transfer = 50
         pyro.ff.graph.cool_transfer = 10
-        pyro.ff.graph.hot_prop_split = 3
-        pyro.ff.graph.cool_prop_split = 4
+        pyro.ff.graph.hot_prop_split = 2
+        pyro.ff.graph.cool_prop_split = 2
         pyro.ff.graph.hot_prop_angle = 30
         pyro.ff.graph.cool_prop_angle = 60
     end

@@ -67,17 +67,17 @@ function draw(dt)
 	if DEBUG_MODE then 
 		-- Debug display
 		UiPush()
-				UiTranslate(UiWidth() - 10, UiHeight() - UI.OPTION_TEXT_SIZE * 2 )
-				UiAlign("right")
-				UiFont("bold.ttf", UI.OPTION_TEXT_SIZE)
-				UiTextOutline(0,0,0,1,0.5)
-				UiColor(1,1,1)
-				UiText("field energy = "..tostring(TOOL.BOOSTER.pyro.ff.energy))
-				local num_field_points = "--"
-				if TOOL.BOOSTER.pyro.ff.field.points ~= nil then 
-					num_field_points = #TOOL.BOOSTER.pyro.ff.field.points
-				end
-				UiText("field points = "..tostring(num_field_points), true)
+			UiTranslate(UiWidth() - 10, UiHeight() - UI.OPTION_TEXT_SIZE * 2 )
+			UiAlign("right")
+			UiFont("bold.ttf", UI.OPTION_TEXT_SIZE)
+			UiTextOutline(0,0,0,1,0.5)
+			UiColor(1,1,1)
+			UiText("field energy = "..tostring(TOOL.BOOSTER.pyro.ff.energy), true)
+			local num_field_points = "--"
+			if TOOL.BOOSTER.pyro.ff.field.points ~= nil then 
+				num_field_points = #TOOL.BOOSTER.pyro.ff.field.points
+			end
+			UiText("field points = "..tostring(num_field_points), true)
 		UiPop()
 	end
 end

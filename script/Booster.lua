@@ -3,12 +3,12 @@
 P_BOOSTER = {}
 P_BOOSTER.booster = nil
 P_BOOSTER.ignition = false
-P_BOOSTER.injection_rate = 0.01
+P_BOOSTER.injection_rate = 0.1
 P_BOOSTER.injection_timer = 0
 P_BOOSTER.burn_radius = 0.5
 P_BOOSTER.body = nil
 P_BOOSTER.attach_body = nil
-P_BOOSTER.vel_offset_max = 2
+P_BOOSTER.vel_offset_max = 1
 P_BOOSTER.power = 0
 P_BOOSTER.ramp = 1 -- time to full power
 
@@ -38,7 +38,7 @@ function booster_tick(dt)
         P_BOOSTER.power = math.min(P_BOOSTER.power + (P_BOOSTER.ramp * dt), 1)
         TOOL.BOOSTER.pyro.impulse_scale = TOOL.BOOSTER.impulse.value * 20 * P_BOOSTER.power
         local booster_trans = GetBodyTransform(P_BOOSTER.body)
-        local t_locus = Vec(0, 2, 0)
+        local t_locus = Vec(0, 3, 0)
         local w_locus = TransformToParentPoint(booster_trans, t_locus)
         local vel = GetBodyVelocity(P_BOOSTER.body)
         local vel_offset = vel
@@ -51,6 +51,7 @@ function booster_tick(dt)
             local dir = VecNormalize(random_vec(1))
             local w_pos = VecAdd(w_locus, VecScale(dir, P_BOOSTER.burn_radius))
             local force_vec = VecScale(dir, TOOL.BOOSTER.pyro.ff.graph.max_force)
+            -- local force_vec = VecScale(Vec(0,-1,0), TOOL.BOOSTER.pyro.ff.graph.max_force)
             apply_force(TOOL.BOOSTER.pyro.ff, w_pos, force_vec)
             -- DebugCross(w_pos)
             P_BOOSTER.injection_timer = P_BOOSTER.injection_rate

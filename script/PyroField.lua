@@ -258,9 +258,9 @@ function collision_fx(pyro)
     for i = 1, #pyro.ff.contacts do
         local contact = pyro.ff.contacts[i]
         Paint(contact.hit_point, random_float_in_range(0, 0.5), "explosion", random_float_in_range(0, 1))
-        if math.random() < pyro.physical_damage_factor then 
-            MakeHole(contact.hit_point, 1, 1/3, 1/5, true)
-        end
+        -- if math.random() < pyro.physical_damage_factor then 
+        --     MakeHole(contact.hit_point, 1, 1/3, 1/5, true)
+        -- end
     end
 end
 
