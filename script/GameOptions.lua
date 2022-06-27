@@ -215,7 +215,7 @@ function create_booster_option_set()
 
 	oSet.impulse = create_mode_option(
 		option_type.numeric, 
-		0.1,
+		0.05,
 		"impulse",
 		"Relative impulse")
 	oSet.impulse.range.lower = 0
