@@ -1,10 +1,10 @@
-function random_float_in_range(low, high)
+function random_float(low, high)
     return (math.random() * (high - low)) + low
 end
 
 function get_variation_term(fraction, value)
     local variation = fraction * value
-    return random_float_in_range(-variation, variation)
+    return random_float(-variation, variation)
 end
 
 function split_string(input_string, separator)
@@ -52,12 +52,19 @@ function box_vec(pos, size)
     return {vecA, vecB}
 end
 
-function random_vec(magnitude)
-    return Vec(random_vec_component(magnitude), random_vec_component(magnitude), random_vec_component(magnitude))
+function unit_vec_to_quat(v)
+    return QuatLookAt(Vec(0,0,0), v)
 end
 
-function random_vec_component(magnitude)
-    return (math.random() * magnitude * 2) - magnitude
+function random_vec(magnitude, base_dir, spread_angle)
+    base_dir = base_dir or Vec(0, 0, -1)
+    spread_angle = spread_angle or 360
+    local a = QuatEuler(
+        (math.random() * spread_angle * 2) - spread_angle,
+        (math.random() * spread_angle * 2) - spread_angle, 
+        (math.random() * spread_angle * 2) - spread_angle)
+    local v = VecNormalize(QuatRotateVec(a, base_dir))
+    return VecScale(v, magnitude)
 end
 
 function random_quat()
@@ -80,6 +87,20 @@ function vecs_equal(vec_a, vec_b)
         vec_a[3] == vec_b[3]
 end
 
+function burst_patter_dirs(num_dirs, angle_step, variation, home_dir)
+    home_dir = home_dir or random_vec(1)
+    local dirs = {}
+    for i = 1, num_dirs do
+        local x_rot = (i * vary_by_fraction(angle_step, variation)) % 360
+        local y_rot = (i * vary_by_fraction(angle_step, variation)) % 360
+        local z_rot = (i * vary_by_fraction(angle_step, variation)) % 360
+        local a = QuatEuler(x_rot, y_rot, z_rot)
+        local v = VecNormalize(QuatRotateVec(a, home_dir))
+        table.insert(dirs, v)
+    end
+    return dirs
+end
+
 function radiate(center_vec, spread_angle, count, offset)
     -- returns unit radiations from a center vec
     offset = offset or 0
@@ -90,7 +111,7 @@ function radiate(center_vec, spread_angle, count, offset)
     local radiations = {}
 	for i = 1, count do
 		local a = QuatRotateQuat(QuatEuler(0, 0, (i * delta) + offset), QuatEuler(spread_angle, 0, 0))
-		local v = QuatRotateVec(a, FF.FORWARD)
+		local v = QuatRotateVec(a, Vec(0,0,-1))
 		table.insert(radiations, TransformToParentPoint(t, v))
 	end
     return radiations
@@ -102,11 +123,6 @@ function round_vec(vec)
         round(vec[2]),
         round(vec[3])
     )
-end
-
-function random_float(min, max)
-    local range = max - min
-    return (math.random() * range) + min
 end
 
 function random_value_per_ratio(value_table, ratios)
@@ -151,7 +167,7 @@ end
 
 function vary_by_fraction(value, fraction)
     local variation = value * fraction
-    return value + random_float_in_range(-variation, variation)
+    return value + random_float(-variation, variation)
 end
 
 function round_to_interval(value, interval)

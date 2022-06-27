@@ -20,8 +20,6 @@ function init()
 	-- away. 
 	suspend_ticks = false
 
-	rumble_sound = LoadSound("MOD/snd/rumble.ogg")
-
 	primary_shoot_timer = 0
 	secondary_shoot_timer = 0
 	primary_shoot_delay = 1
@@ -73,10 +71,7 @@ function draw(dt)
 			UiTextOutline(0,0,0,1,0.5)
 			UiColor(1,1,1)
 			UiText("field energy = "..tostring(TOOL.BOOSTER.pyro.ff.energy), true)
-			local num_field_points = "--"
-			if TOOL.BOOSTER.pyro.ff.field.points ~= nil then 
-				num_field_points = #TOOL.BOOSTER.pyro.ff.field.points
-			end
+			local num_field_points = TOOL.BOOSTER.pyro.ff.num_points
 			UiText("field points = "..tostring(num_field_points), true)
 		UiPop()
 	end
@@ -380,23 +375,4 @@ end
 function stop_all_flames()
 	reset_ff(TOOL.BOOSTER.pyro.ff)
 	P_BOOSTER.burn_timer = 0
-end
-
-function shock_at(pos, intensity, damage_factor)
-	init_shock_field(intensity, damage_factor)
-    local force_mag = SHOCK_FIELD.ff.graph.max_force
-    local fireball_rad = 2
-    local explosion_seeds = 1000
-    for i = 1, explosion_seeds do
-        local spawn_dir = VecNormalize(random_vec(1))
-        local spark_offset = VecScale(spawn_dir, random_float_in_range(0, fireball_rad))
-        local spark_pos = VecAdd(pos, spark_offset)
-        local force_dir = VecNormalize(VecSub(spark_pos, pos))
-        local hit, dist = QueryRaycast(pos, force_dir, spark_offset, 0.025)
-        if hit then
-            local spark_pos = VecAdd(pos, VecScale(force_dir, dist - 0.1)) 
-        end
-        local spark_vec = VecScale(force_dir, force_mag)
-        apply_force(SHOCK_FIELD.ff, spark_pos, spark_vec)
-    end
 end

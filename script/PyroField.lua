@@ -75,7 +75,6 @@ function inst_pyro()
     inst.max_flames = 400
     -- The force field wrapped by this pyro field.
     inst.ff = inst_force_field_ff()
-
     return inst
 end
 
@@ -90,7 +89,7 @@ end
 
 function make_flame_effect(pyro, flame, dt)
     -- Render effects for one flame instance.
-    local life_n =  bracket_value(range_value_to_fraction(flame.parent.mag, FF.LOW_MAG_LIMIT, pyro.ff.graph.max_force), 1, 0)
+    local power =  bracket_value(range_value_to_fraction(flame.parent.mag, FF.LOW_MAG_LIMIT, pyro.ff.max_force), 1, 0)
     local color = Vec()
     local intensity = pyro.flame_light_intensity
     if PYRO.RAINBOW_MODE then
@@ -104,25 +103,25 @@ function make_flame_effect(pyro, flame, dt)
     else
         -- when not in rainbow mode...
         if flame.parent.mag > pyro.fade_magnitude then 
-            color = HSVToRGB(blend_color(life_n ^ 2, pyro.color_cool, pyro.color_hot))
+            color = HSVToRGB(blend_color(power ^ 2, pyro.color_cool, pyro.color_hot))
         else
             color = HSVToRGB(pyro.color_cool)
         end
     end
 
     local puff_color_value = 1
-    local particle_size = fraction_to_range_value(life_n ^ 0.5, pyro.cool_particle_size, pyro.hot_particle_size)
+    local particle_size = fraction_to_range_value(power ^ 0.5, pyro.cool_particle_size, pyro.hot_particle_size)
     if flame.parent.mag < pyro.fade_magnitude then 
         local burnout_n = range_value_to_fraction(flame.parent.mag, 0, pyro.fade_magnitude)
         puff_color_value = bracket_value(burnout_n, 1, 0.2)
-        intensity = fraction_to_range_value(burnout_n, 0.2, intensity)
+        intensity = fraction_to_range_value(burnout_n, 0, intensity)
     end
     -- Put the light source in the middle of where the diffusing flame puff will be
     PointLight(flame.pos, color[1], color[2], color[3], intensity)
     -- fire puff smoke particle generation
     ParticleReset()
     ParticleType("smoke")
-    ParticleAlpha(pyro.flame_opacity, 0, "easeout", 0, 1)
+    ParticleAlpha(pyro.flame_opacity, 0, "linear", 0, 1)
     -- ParticleDrag(0.25)
     ParticleRadius(particle_size)
     local smoke_color = HSVToRGB(Vec(0, 0, puff_color_value))
@@ -161,13 +160,7 @@ end
 function burn_fx(pyro)
     -- Start fires throught the native Teardown mechanism. Base these effects on the
     -- lower resolution metafield for better performance (typically)
-    local base_field = nil
-    if pyro.ff.use_metafield then 
-        base_field = pyro.ff.metafield
-    else
-        base_field = pyro.ff.field
-    end
-    local points = flatten(base_field)
+    local points = flatten(pyro.ff.field)
     local num_fires = round((pyro.fire_density / pyro.fire_ignition_radius)^3)
     for i = 1, #points do
         local point = points[i]
@@ -221,34 +214,27 @@ function spawn_flame_group(pyro, point, flame_table, pos)
 end
 
 function impulse_fx(pyro)
-    local base_field = nil
-    if pyro.ff.use_metafield then 
-        base_field = pyro.ff.metafield
-    else
-        base_field = pyro.ff.field
-    end
-    local points = flatten(base_field)
+    local points = flatten(pyro.ff.field)
     local player_trans = GetPlayerTransform()
     for i = 1, #points do
         local point = points[i]
         -- apply impulse
         local box = box_vec(point.pos, pyro.impulse_radius)
         local push_bodies = QueryAabbBodies(box[1], box[2])
-        -- local force_mag = VecLength(point.vec)
-        local force_dir = VecNormalize(point.vec)
         for i = 1, #push_bodies do
             local push_body = push_bodies[i]
             local body_center = TransformToParentPoint(GetBodyTransform(push_body), GetBodyCenterOfMass(push_body))
-            local hit = QueryRaycast(point.pos, force_dir, pyro.impulse_radius, 0.025)
+            local force_dir = VecSub(body_center, point.pos)
+            local hit = QueryRaycast(point.pos, force_dir, pyro.impulse_radius)
             if hit then 
-                local impulse_mag = fraction_to_range_value(point.life_n ^ 0.5, PYRO.MIN_IMPULSE, PYRO.MAX_IMPULSE) * pyro.impulse_scale
+                local impulse_mag = fraction_to_range_value(point.power ^ 0.5, PYRO.MIN_IMPULSE, PYRO.MAX_IMPULSE) * pyro.impulse_scale
                 ApplyBodyImpulse(push_body, body_center, VecScale(force_dir, impulse_mag))
             end
         end
         local player_vel = VecLength(GetPlayerVelocity())
         if VecLength(VecSub(player_trans.pos, point.pos)) <= pyro.impulse_radius and player_vel < PYRO.MAX_PLAYER_VEL then
 
-            local push_mag = fraction_to_range_value(point.life_n ^ 2, PYRO.MIN_PLAYER_PUSH, PYRO.MAX_PLAYER_PUSH) * pyro.impulse_scale
+            local push_mag = fraction_to_range_value(point.power ^ 2, PYRO.MIN_PLAYER_PUSH, PYRO.MAX_PLAYER_PUSH) * pyro.impulse_scale
             SetPlayerVelocity(VecAdd(GetPlayerVelocity(), VecScale(force_dir, push_mag)))
         end
     end
@@ -257,7 +243,7 @@ end
 function collision_fx(pyro)
     for i = 1, #pyro.ff.contacts do
         local contact = pyro.ff.contacts[i]
-        Paint(contact.hit_point, random_float_in_range(0, 0.5), "explosion", random_float_in_range(0, 1))
+        Paint(contact.hit_point, random_float(0, 0.5), "explosion", random_float(0, 1))
         -- if math.random() < pyro.physical_damage_factor then 
         --     MakeHole(contact.hit_point, 1, 1/3, 1/5, true)
         -- end
@@ -267,7 +253,7 @@ end
 function check_hurt_player(pyro)
     local player_trans = GetPlayerTransform()
     local player_pos = player_trans.pos
-    local points = flatten(pyro.ff.metafield)
+    local points = flatten(pyro.ff.field)
     for i = 1, #points do
         local point = points[i]
         -- hurt player
@@ -277,7 +263,7 @@ function check_hurt_player(pyro)
             local hit = QueryRaycast(point.pos, VecNormalize(vec_to_player), dist_to_player, 0.025)
             if not hit then             
                 local factor = 1 - (dist_to_player / pyro.impulse_radius)
-                factor = factor * (VecLength(point.vec) / pyro.ff.graph.max_force) + 0.01
+                factor = factor * (point.mag / pyro.ff.max_force) + 0.01
                 hurt_player(factor * pyro.max_player_hurt)
             end
         end
@@ -287,11 +273,14 @@ end
 function flame_tick(pyro, dt)
     pyro.tick_count = pyro.tick_count - 1
     if pyro.tick_count == 0 then pyro.tick_count = pyro.tick_interval end
+
     force_field_ff_tick(pyro.ff, dt)
     
     if pyro.render_flames then 
         spawn_flames(pyro)
-        make_flame_effects(pyro, dt)
+        if not DEBUG_MODE then 
+            make_flame_effects(pyro, dt)
+        end
     end
 
     if (pyro.tick_count + 2) % 3 == 0 then 
