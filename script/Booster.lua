@@ -3,17 +3,17 @@
 rumble_sound = LoadLoop("MOD/snd/rumble.ogg")
 fire_sound = LoadLoop("MOD/snd/rocketfire.ogg")
 
-P_BOOSTER = {}
-P_BOOSTER.booster = nil
-P_BOOSTER.ignition = false
-P_BOOSTER.injection_rate = 0.01
-P_BOOSTER.injection_timer = 0
-P_BOOSTER.injection_count = 10
-P_BOOSTER.burn_radius = 2
-P_BOOSTER.body = nil
-P_BOOSTER.vel_offset_max = 1
-P_BOOSTER.power = 0
-P_BOOSTER.ramp = 1 -- time to full power
+PB_ = {}
+PB_.booster = nil
+PB_.ignition = false
+PB_.injection_rate = 0.01
+PB_.injection_timer = 0
+PB_.injection_count = 10
+PB_.burn_radius = 1
+PB_.body = nil
+PB_.power = 0
+PB_.ramp = 1 -- time to full power\
+PB_.impulse_const = 1
 
 function respawn_booster()
 	local camera = GetPlayerCameraTransform()
@@ -23,43 +23,41 @@ function respawn_booster()
 	if hit then
 		local hit_point = VecAdd(camera.pos, VecScale(shoot_dir, dist))
 		local trans = Transform(hit_point, QuatEuler(0,0,0))
-        if P_BOOSTER ~= nil then 
-            Delete(P_BOOSTER.body)
+        if PB_ ~= nil then 
+            Delete(PB_.body)
         end
-		P_BOOSTER.body = Spawn("MOD/prefab/pyro_booster.xml", trans, false, true)[1]
+		PB_.body = Spawn("MOD/prefab/pyro_booster.xml", trans, false, true)[1]
 	end
 end
 
 function booster_ignition_toggle()
-    P_BOOSTER.power = 0
-    P_BOOSTER.ignition = not P_BOOSTER.ignition
+    PB_.power = 0
+    PB_.ignition = not PB_.ignition
 end
 
 function booster_tick(dt)
-    if P_BOOSTER.ignition then
-        P_BOOSTER.power = math.min(P_BOOSTER.power + (P_BOOSTER.ramp * dt), 1)
-        TOOL.BOOSTER.pyro.impulse_scale = TOOL.BOOSTER.impulse.value * 10 * P_BOOSTER.power
-        local booster_trans = GetBodyTransform(P_BOOSTER.body)
-        local t_locus = Vec(0, 3, 0)
-        local w_locus = TransformToParentPoint(booster_trans, t_locus)
-        local vel = GetBodyVelocity(P_BOOSTER.body)
-        local vel_offset = VecScale(vel, 0.1)
-        if VecLength(vel_offset) > P_BOOSTER.vel_offset_max then 
-            vel_offset = VecScale(VecNormalize(vel), P_BOOSTER.vel_offset_max)
-        end
-        w_locus = VecAdd(w_locus, vel_offset)
-        if P_BOOSTER.injection_timer == 0 then 
-            for i = 1, P_BOOSTER.injection_count do
-                local dir = VecNormalize(random_vec(1))
-                local w_pos = VecAdd(w_locus, VecScale(dir, P_BOOSTER.burn_radius))
-                apply_force(TOOL.BOOSTER.pyro.ff, w_pos, TOOL.BOOSTER.pyro.ff.max_force / 2)
+    if PB_.ignition then
+        PB_.power = math.min(PB_.power + (PB_.ramp * dt), 1)
+        TOOL.BOOSTER.pyro.impulse_scale = TOOL.BOOSTER.impulse.value * PB_.impulse_const * PB_.power
+        local booster_trans = GetBodyTransform(PB_.body)
+        if PB_.injection_timer == 0 then 
+            local l_inj_center = Vec(0, 5, 0)
+            local w_inj_center = TransformToParentPoint(booster_trans, l_inj_center)
+            local booster_vel = GetBodyVelocity(PB_.body)
+            for i = 1, PB_.injection_count do
+                local l_inj_dir = random_vec(1, Vec(0, -1, 0), 60)
+                local w_inj_dir = TransformToParentVec(booster_trans, l_inj_dir)
+                local w_inj_pos = VecAdd(w_inj_center, VecScale(w_inj_dir, PB_.burn_radius))
+                local magnitude = TOOL.BOOSTER.pyro.ff.max_force / 2
+                apply_force(TOOL.BOOSTER.pyro.ff, w_inj_pos, magnitude)
+                ApplyBodyImpulse(PB_.body, w_inj_center, VecScale(VecScale(w_inj_dir, -1), magnitude * TOOL.BOOSTER.pyro.impulse_scale))
                 if DEBUG_MODE then 
-                    DebugCross(w_pos)
+                    DebugLine(w_inj_center, w_inj_pos)
                 end
             end
-            P_BOOSTER.injection_timer = P_BOOSTER.injection_rate
+            PB_.injection_timer = PB_.injection_rate
         end
-        P_BOOSTER.injection_timer = math.max(0, P_BOOSTER.injection_timer - dt)
+        PB_.injection_timer = math.max(0, PB_.injection_timer - dt)
         PlayLoop(fire_sound, booster_trans.pos, 10)
         PlayLoop(rumble_sound, booster_trans.pos, 10)
     end

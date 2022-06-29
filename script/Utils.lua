@@ -56,14 +56,14 @@ function unit_vec_to_quat(v)
     return QuatLookAt(Vec(0,0,0), v)
 end
 
-function random_vec(magnitude, base_dir, spread_angle)
-    base_dir = base_dir or Vec(0, 0, -1)
+function random_vec(magnitude, center_dir, spread_angle)
+    center_dir = center_dir or Vec(0, 0, -1)
     spread_angle = spread_angle or 360
     local a = QuatEuler(
         (math.random() * spread_angle * 2) - spread_angle,
         (math.random() * spread_angle * 2) - spread_angle, 
         (math.random() * spread_angle * 2) - spread_angle)
-    local v = VecNormalize(QuatRotateVec(a, base_dir))
+    local v = VecNormalize(QuatRotateVec(a, center_dir))
     return VecScale(v, magnitude)
 end
 

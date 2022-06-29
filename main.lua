@@ -341,7 +341,7 @@ function handle_input(dt)
 				
 				-- ignition
 				if InputPressed(KEY.IGNITION.key) then
-					if P_BOOSTER.body ~= nil then
+					if PB_.body ~= nil then
 						booster_ignition_toggle()
 					end
 				end
@@ -374,5 +374,5 @@ end
 
 function stop_all_flames()
 	reset_ff(TOOL.BOOSTER.pyro.ff)
-	P_BOOSTER.burn_timer = 0
+	PB_.burn_timer = 0
 end
