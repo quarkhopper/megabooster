@@ -19,61 +19,29 @@ PYRO.GRAVITY = 0.5
 
 function inst_pyro()
     local inst = {}
-    -- Like the force field, this coordinates the staggering of 
-    -- activities on different ticks for performance reasons. 
-    inst.tick_interval = 3
-    inst.tick_count = inst.tick_interval
-    -- Table of objects that represent one point of light in the explosion shrouded by 
-    -- smoke to give it some diffusion. 
     inst.flames = {}
-    -- If conditions are met to spawn flames on a force field point, this is the number 
-    -- of flames that will be spawned based on that world coordinate (may be staggered or
-    -- varied in some other way)
     inst.flames_per_spawn = 5
-    -- Intensity of a flame light point in its puff. Customization of this should be
-    -- controlled through the HSV color rather than this value which function more 
-    -- of a gain.
-    inst.flame_light_intensity = 4
-    -- When considering the base force field vector point, any vector below this magnitude
-    -- changes the flame rendering mode from normal rules to "ember" rules. Ember rules will
-    -- have the flame point light decreasing in intensity and the puff getting smaller and 
-    -- jittering as it flutters away. 
+    inst.flame_light_intensity = 4 
     inst.cool_particle_size = 1
-    inst.hot_particle_size = 0.3
-    -- The lifetime of black smoke that spawns behind the flames.
+    inst.hot_particle_size = 0.5
     inst.smoke_life = 3
-    -- Normalized smoke amount. Calculated by math.random() < value
     inst.smoke_amount_n = 0.2
-    -- True if rendering flames. If this is false then only the flame "puffs" will be shown 
-    -- and no black smoke will be generated. This is false when using the pyro Max field for
-    -- shock wave effects.
+    inst.flame_amount_n = 1
     inst.render_flames = true
-    -- The lifetime of flame diffusing smoke puffs.
     inst.flame_puff_life = 0.5
-    -- Jitter applied to the flame as the maximum magnitude of vector components
-    -- added to the position of the flame.
     inst.flame_jitter = 0
-    -- Built-in Teardown tile to use for the flame. 
     inst.flame_tile = 0
-    -- Opacity of flame puffs. 
     inst.flame_opacity = 1
     inst.impulse_scale = 1
-    -- Effective radius that a force field vector can interact with a world body to apply
-    -- impulse to it. 
     inst.impulse_radius = 5
-    -- Radius from a force field vector point that flames can arise.
     inst.fire_ignition_radius = 1
     inst.fire_density = 1
     inst.physical_damage_factor = 0.5
-    -- The gretest proportion of player health that can be taken away in a tick
     inst.max_player_hurt = 0.5
-    -- The flame color when based on a force field vector point just above dead force.
     inst.color_cool = Vec(7.7, 1, 0.8)
-    -- The flame color when based on a force field vector point at maximum magnitude.
     inst.color_hot = Vec(7.7, 1, 0.8)
     inst.fade_magnitude = 20
     inst.max_flames = 400
-    -- The force field wrapped by this pyro field.
     inst.ff = inst_force_field_ff()
     return inst
 end
@@ -180,7 +148,9 @@ function make_flame_effects(pyro, dt)
     -- for every flame instance, make the appropriate effect
     for i = 1, #pyro.flames do
         local flame = pyro.flames[i]
-        make_flame_effect(pyro, flame, dt)
+        if math.random() < pyro.flame_amount_n then 
+            make_flame_effect(pyro, flame, dt)
+        end
     end
 end
 
@@ -190,11 +160,7 @@ function spawn_flames(pyro)
     local points = flatten(pyro.ff.field)
     for i = 1, #points do
         local point = points[i]
-        spawn_flame_group(pyro, point, new_flames)
-    end
-    for i = 1, #pyro.ff.contacts do
-        local contact = pyro.ff.contacts[i]
-        spawn_flame_group(pyro, contact.point, new_flames, contact.hit_point)      
+        spawn_flame_group(pyro, point, new_flames)     
     end
     while #new_flames > pyro.max_flames do
         table.remove(new_flames, math.random(#new_flames))
@@ -213,7 +179,7 @@ function spawn_flame_group(pyro, point, flame_table, pos)
     end
 end
 
-function impulse_fx(pyro)
+function contact_fx(pyro)
     local points = flatten(pyro.ff.field)
     local player_trans = GetPlayerTransform()
     for i = 1, #points do
@@ -224,29 +190,21 @@ function impulse_fx(pyro)
         for i = 1, #push_bodies do
             local push_body = push_bodies[i]
             local body_center = TransformToParentPoint(GetBodyTransform(push_body), GetBodyCenterOfMass(push_body))
-            local force_dir = VecSub(body_center, point.pos)
-            local hit = QueryRaycast(point.pos, force_dir, pyro.impulse_radius)
+            local body_dir = VecSub(body_center, point.pos)
+            local hit, dist = QueryRaycast(point.pos, body_dir, pyro.impulse_radius)
             if hit then 
+                local hit_point = VecAdd(point.pos, VecScale(body_dir, dist))
                 local impulse_mag = fraction_to_range_value(point.power ^ 0.5, PYRO.MIN_IMPULSE, PYRO.MAX_IMPULSE) * pyro.impulse_scale
-                ApplyBodyImpulse(push_body, body_center, VecScale(force_dir, impulse_mag))
+                ApplyBodyImpulse(push_body, body_center, VecScale(body_dir, impulse_mag))
+                Paint(hit_point, random_float(0.5, 1), "explosion", random_float(0, 1))
             end
         end
         local player_vel = VecLength(GetPlayerVelocity())
         if VecLength(VecSub(player_trans.pos, point.pos)) <= pyro.impulse_radius and player_vel < PYRO.MAX_PLAYER_VEL then
-
             local push_mag = fraction_to_range_value(point.power ^ 2, PYRO.MIN_PLAYER_PUSH, PYRO.MAX_PLAYER_PUSH) * pyro.impulse_scale
             SetPlayerVelocity(VecAdd(GetPlayerVelocity(), VecScale(force_dir, push_mag)))
         end
-    end
-end
 
-function collision_fx(pyro)
-    for i = 1, #pyro.ff.contacts do
-        local contact = pyro.ff.contacts[i]
-        Paint(contact.hit_point, random_float(0, 0.5), "explosion", random_float(0, 1))
-        -- if math.random() < pyro.physical_damage_factor then 
-        --     MakeHole(contact.hit_point, 1, 1/3, 1/5, true)
-        -- end
     end
 end
 
@@ -271,9 +229,6 @@ function check_hurt_player(pyro)
 end
 
 function flame_tick(pyro, dt)
-    pyro.tick_count = pyro.tick_count - 1
-    if pyro.tick_count == 0 then pyro.tick_count = pyro.tick_interval end
-
     force_field_ff_tick(pyro.ff, dt)
     
     if pyro.render_flames then 
@@ -283,13 +238,7 @@ function flame_tick(pyro, dt)
         end
     end
 
-    if (pyro.tick_count + 2) % 3 == 0 then 
-        collision_fx(pyro)
-        pyro.ff.contacts = {}
-    elseif (pyro.tick_count + 1) % 3 == 0 then 
-        impulse_fx(pyro)
-    elseif pyro.tick_count % 3 == 0 then 
-        burn_fx(pyro)
-        check_hurt_player(pyro)
-    end
+    contact_fx(pyro)
+    burn_fx(pyro)
+    check_hurt_player(pyro)
 end

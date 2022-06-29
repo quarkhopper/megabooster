@@ -215,13 +215,23 @@ function create_booster_option_set()
 
 	oSet.impulse = create_mode_option(
 		option_type.numeric, 
-		0.05,
+		0.1,
 		"impulse",
 		"Relative impulse")
 	oSet.impulse.range.lower = 0
 	oSet.impulse.range.upper = 1
 	oSet.impulse.step = 0.001
 	oSet.options[#oSet.options + 1] = oSet.impulse
+
+	oSet.flame_density = create_mode_option(
+		option_type.numeric, 
+		0.5,
+		"flame_density",
+		"Flame density")
+	oSet.flame_density.range.lower = 0
+	oSet.flame_density.range.upper = 1
+	oSet.flame_density.step = 0.001
+	oSet.options[#oSet.options + 1] = oSet.flame_density
 
 	oSet.physical_damage_factor.value = 0
 	return oSet
