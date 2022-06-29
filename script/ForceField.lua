@@ -100,8 +100,13 @@ function propagate_point_force(ff, point, dt)
             resultant_dir = VecAdd(resultant_dir, VecScale(trans_dir, trans_mag))
         else
             local hit_point = VecAdd(point.pos, VecScale(trans_dir, dist))
+            resultant_dir = VecAdd(resultant_dir, VecScale(normal, point.mag))
             -- table.insert(ff.contacts, inst_field_contact(point, hit_point, normal, shape))
-            point.mag = point.mag * (1 - ff.thermo_loss)        
+            -- point.mag = point.mag * (1 - ff.thermo_loss)        
+            point.cull = true
+            if DEBUG_MODE then 
+                DebugCross(point.pos, 0, 1, 0)
+            end
         end
     end
 
