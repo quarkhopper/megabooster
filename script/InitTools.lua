@@ -34,9 +34,9 @@ function init_pyro(tool)
         pyro.smoke_life = 1
         pyro.smoke_amount_n = 0.2
         pyro.flame_amount_n = 0.5
-        pyro.flame_opacity = 0.5
-        pyro.max_player_hurt = 0.1
-        pyro.flames_per_spawn = 6
+        pyro.flame_opacity = 1
+        pyro.max_player_hurt = 0.0
+        pyro.flames_per_spawn = 4
         pyro.flame_light_intensity = 2
         pyro.fire_ignition_radius = 1.5
         pyro.fire_density = 5
