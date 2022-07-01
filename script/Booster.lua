@@ -9,7 +9,6 @@ PB_.ignition = false
 PB_.injection_count = 10
 PB_.burn_radius = 1
 PB_.booster_body = nil
-PB_.host_body = nil
 PB_.power = 0
 PB_.ramp = 1 -- time to full power\
 PB_.impulse_const = 1
@@ -30,7 +29,6 @@ function respawn_booster()
             local spawn_point = VecAdd(hit_point, VecScale(normal, PB_.joint_offset))
             local spawn_quat = quat_between_vecs(Vec(0,1,0), VecScale(normal, -1))
             trans = Transform(spawn_point, spawn_quat)
-            PB_.host_body = hit_body
         else
 		    trans = Transform(hit_point, QuatEuler(0,0,0))
             PB_.host_body = nil
