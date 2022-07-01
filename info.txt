@@ -1,4 +1,4 @@
 name = MegaBooster
 author = quarkhopper
-description = [h1]WIP[/h1]This is a work in progress but it's too much fun not to share. Enjoy! (L) to launch. (O) for options. 
+description = [h1]Sky high action![/h1]Click on a dynamic object and attach a booster to it or just click on the ground to put one upright. left mouse button to put the booster down, (I) to toggle ignition, (O) for options. 
 tags = Tool
