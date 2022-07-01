@@ -8,10 +8,6 @@ function inst_force_field_ff()
     local inst = {}
     -- The field is a hashed multidim array for fast location searching
     inst.field = {}
-    -- These are "hit" events when a vector force tries to propagate into 
-    -- a shape. This list is cleared before every propagation. This field is 
-    -- regenerated regularly from the base field.
-    inst.contacts = {}
     inst.resolution = 0.5
     inst.extend_scale = 1.5
     inst.max_sim_points = 500
@@ -26,21 +22,6 @@ end
 
 function reset_ff(ff)
     ff.field = {}
-    ff.contacts = {}
-end
-
-function inst_field_contact(point, hit_point, normal, shape)
-    -- A contact is a record of any time a force is propagated into a coordinates
-    -- that is occupied by shape voxels. This is interpreted as a "hit" event by 
-    -- the force. No new vector is created to occupy that coordinate, though if 
-    -- a hole is created by a higher level process the force may be able to spread
-    -- into the unnoccupied coordinate in the next tick.
-    local inst = {}
-    inst.point = point
-    inst.hit_point = hit_point
-    inst.normal = normal
-    inst.shape = shape
-    return inst
 end
 
 function inst_field_point(coord, resolution, ff)
@@ -99,11 +80,7 @@ function propagate_point_force(ff, point, dt)
             dir_found = true
             resultant_dir = VecAdd(resultant_dir, VecScale(trans_dir, trans_mag))
         else
-            local hit_point = VecAdd(point.pos, VecScale(trans_dir, dist))
-            trans_dir = VecNormalize(VecAdd(trans_dir, normal))
-            resultant_dir = VecAdd(resultant_dir, VecScale(trans_dir, point.mag))
-            -- table.insert(ff.contacts, inst_field_contact(point, hit_point, normal, shape))
-            -- point.mag = point.mag * (1 - ff.thermo_loss)        
+            resultant_dir = VecAdd(resultant_dir, VecScale(normal, point.mag))   
             point.cull = true
             if DEBUG_MODE then 
                 DebugCross(point.pos, 0, 1, 0)
@@ -118,13 +95,15 @@ function propagate_point_force(ff, point, dt)
             local coord_prime = round_vec(VecAdd(point.coord, VecScale(trans_dir,  ff.extend_scale)))
             if not vecs_equal(coord_prime, point.coord) then 
                 local point_prime = field_get(ff.field, coord_prime)
+                local trans_mag = 0
                 if point_prime ~= nil then 
-                    local trans_mag = math.min(point.mag, ff.max_force - point_prime.mag)
+                    trans_mag = math.min(point.mag, ff.max_force - point_prime.mag)
                     point_prime.mag = point_prime.mag + (trans_mag * (1 - ff.thermo_loss))
                     point.mag = math.max(0, point.mag - trans_mag)
                 else
+                    trans_mag = point.mag
                     point_prime = inst_field_point(coord_prime, ff.resolution)
-                    point_prime.mag = point.mag * (1 - ff.thermo_loss)
+                    point_prime.mag = trans_mag * (1 - ff.thermo_loss)
                     field_put(ff.field, point_prime, point_prime.coord)
                     point.cull = true
                 end
@@ -133,6 +112,7 @@ function propagate_point_force(ff, point, dt)
     else
         point.mag = point.mag * (1 - ff.thermo_loss)
     end
+    point.power = point.mag / ff.max_force
 end
 
 function cull_field(ff)
@@ -253,9 +233,6 @@ function debug_field(ff)
         local point = points[i]
         local color = debug_color(ff, point)
         DebugCross(point.pos, color[1], color[2], color[3])
-    end
-    for i = 1, #ff.contacts do
-        DebugCross(ff.contacts[i].hit_point, 0, 1, 0)
     end
 end
 

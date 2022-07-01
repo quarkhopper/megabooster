@@ -40,6 +40,8 @@ function inst_pyro()
     inst.max_player_hurt = 0.5
     inst.color_cool = Vec(7.7, 1, 0.8)
     inst.color_hot = Vec(7.7, 1, 0.8)
+    inst.jitter_hot = 0
+    inst.jitter_cool = 0.5
     inst.fade_magnitude = 20
     inst.max_flames = 400
     inst.ff = inst_force_field_ff()
@@ -78,18 +80,20 @@ function make_flame_effect(pyro, flame, dt)
     end
 
     local puff_color_value = 1
+    local opacity = pyro.flame_opacity
     local particle_size = fraction_to_range_value(power ^ 0.5, pyro.cool_particle_size, pyro.hot_particle_size)
     if flame.parent.mag < pyro.fade_magnitude then 
         local burnout_n = range_value_to_fraction(flame.parent.mag, 0, pyro.fade_magnitude)
         puff_color_value = bracket_value(burnout_n, 1, 0.2)
         intensity = fraction_to_range_value(burnout_n, 0, intensity)
+        opacity = fraction_to_range_value(burnout_n, 0, pyro.flame_opacity)
     end
     -- Put the light source in the middle of where the diffusing flame puff will be
     PointLight(flame.pos, color[1], color[2], color[3], intensity)
     -- fire puff smoke particle generation
     ParticleReset()
     ParticleType("smoke")
-    ParticleAlpha(pyro.flame_opacity, 0, "linear", 0, 1)
+    ParticleAlpha(opacity, 0, "linear", 0, 1)
     -- ParticleDrag(0.25)
     ParticleRadius(particle_size)
     local smoke_color = HSVToRGB(Vec(0, 0, puff_color_value))
@@ -171,7 +175,8 @@ end
 function spawn_flame_group(pyro, point, flame_table, pos)
     pos = pos or point.pos
     for i = 1, pyro.flames_per_spawn do
-        local offset_dir = VecNormalize(random_vec(1))
+        local jitter = fraction_to_range_value(point.power, pyro.jitter_cool, pyro.jitter_hot)
+        local offset_dir = VecNormalize(random_vec(jitter))
         local flame_pos = VecAdd(pos, VecScale(offset_dir, pyro.ff.resolution))
         local flame = inst_flame(pos)
         flame.parent = point

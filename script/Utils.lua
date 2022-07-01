@@ -75,6 +75,12 @@ function random_quat()
     )
 end
 
+function quat_between_vecs(v1, v2)
+    local a = VecCross(v1, v2)
+    local w = (VecLength(v1)^2 * VecLength(v2)^2) ^ 0.5 + VecDot(v1, v2)
+    return Quat(a[1], a[2], a[3], w)
+end
+
 function reflection_vector(vec, normal)
 	local u = VecScale((VecDot(vec, normal) / VecDot(normal, normal)), normal)
 	local w = VecSub(vec, u)

@@ -233,6 +233,16 @@ function create_booster_option_set()
 	oSet.flame_density.step = 0.001
 	oSet.options[#oSet.options + 1] = oSet.flame_density
 
+	oSet.flame_life = create_mode_option(
+		option_type.numeric, 
+		0.5,
+		"flame_life",
+		"Flame life")
+	oSet.flame_life.range.lower = 0
+	oSet.flame_life.range.upper = 1
+	oSet.flame_life.step = 0.001
+	oSet.options[#oSet.options + 1] = oSet.flame_life
+
 	oSet.physical_damage_factor.value = 0
 	return oSet
 end
