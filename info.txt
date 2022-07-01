@@ -1,4 +1,4 @@
 name = MegaBooster
 author = quarkhopper
-description = [h1]Sky high action![/h1]Click on a dynamic object and attach a booster to it or just click on the ground to put one upright. left mouse button to put the booster down, (I) to toggle ignition, (O) for options. 
+description = [h1]Sky high action![/h1]Click on a dynamic object and attach a booster to it or just click on the ground to put one upright. left mouse button to put a booster down, (I) to toggle ignition, (C) to clear all boosters, (O) for options. 
 tags = Tool

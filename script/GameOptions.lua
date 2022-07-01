@@ -225,7 +225,7 @@ function create_booster_option_set()
 
 	oSet.flame_density = create_mode_option(
 		option_type.numeric, 
-		0.8,
+		0.2,
 		"flame_density",
 		"Flame density")
 	oSet.flame_density.range.lower = 0

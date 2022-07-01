@@ -51,12 +51,13 @@ function draw(dt)
 
 	-- on screen display to help the player remember what keys do what
 	UiPush()
-		UiTranslate(0, UiHeight() - UI.OPTION_TEXT_SIZE * 4)
+		UiTranslate(0, UiHeight() - UI.OPTION_TEXT_SIZE * 5)
 		UiAlign("left")
 		UiFont("bold.ttf", UI.OPTION_TEXT_SIZE)
 		UiTextOutline(0,0,0,1,0.5)
 		UiColor(1,1,1)
 		UiText("Left click to place booster", true)
+		UiText(KEY.CLEAR.key.." to clear all boosters", true)
 		UiText(KEY.IGNITION.key.." for ignition toggle", true)
 		UiText(KEY.OPTIONS.key.." for booster options", true)
 		UiText(KEY.DEBUG.key.." for physics debug")
@@ -325,9 +326,9 @@ function handle_input(dt)
 			if InputPressed(KEY.OPTIONS.key) then 
 				editing_options = true
 			else
-				-- end all flame effects
-				if InputPressed(KEY.STOP_FX.key) then
-					stop_all_flames()
+				-- clear all boosters
+				if InputPressed(KEY.CLEAR.key) then
+					clear_boosters()
 				end
 
 				--primary fire
@@ -335,13 +336,13 @@ function handle_input(dt)
 				primary_shoot_timer == 0 and
 				InputDown("LMB") and 
 				not InputDown("RMB") then
-					respawn_booster()
+					spawn_booster()
 					primary_shoot_timer = primary_shoot_delay
 				end
 				
 				-- ignition
 				if InputPressed(KEY.IGNITION.key) then
-					if PB_.booster_body ~= nil then
+					if #boosters > 0 then
 						booster_ignition_toggle()
 					end
 				end
@@ -370,9 +371,3 @@ end
 -- Support functions
 -------------------------------------------------
 
-
-
-function stop_all_flames()
-	reset_ff(TOOL.BOOSTER.pyro.ff)
-	PB_.burn_timer = 0
-end

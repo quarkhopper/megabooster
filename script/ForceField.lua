@@ -29,7 +29,8 @@ function inst_field_point(coord, resolution, ff)
     inst.resolution = resolution
     inst.coord = coord
     local half_res = resolution/2
-    inst.pos = VecAdd(VecScale(coord, inst.resolution), VecScale(Vec(1,1,1), half_res))
+    inst.pos = VecScale(coord, inst.resolution)
+    -- inst.pos = VecAdd(VecScale(coord, inst.resolution), VecScale(Vec(1,1,1), half_res))
     inst.mag = 0
     inst.power = 1
     inst.cull = false

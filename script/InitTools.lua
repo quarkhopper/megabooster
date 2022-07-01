@@ -29,6 +29,10 @@ function init_pyro(tool)
     if tool.flame_life ~= nil then 
         pyro.flame_puff_life = fraction_to_range_value(tool.flame_life.value, 0.1, 2)
     end
+    pyro.flame_amount_n = 0.5
+    if tool.flame_density ~= nil then 
+        pyro.flame_amount_n = tool.flame_density.value
+    end
 
     if tool == TOOL.BOOSTER then 
         pyro.fade_magnitude = 10
@@ -37,13 +41,12 @@ function init_pyro(tool)
         pyro.impulse_radius = 3
         pyro.smoke_life = 1
         pyro.smoke_amount_n = 0.1
-        pyro.flame_amount_n = 0.5
         pyro.flame_opacity = 0.5
-        pyro.max_player_hurt = 0.0
+        pyro.max_player_hurt = 0.1
         pyro.flames_per_spawn = 4
         pyro.flame_light_intensity = 4
         pyro.fire_ignition_radius = 1.5
-        pyro.fire_density = 1
+        pyro.fire_density = 10
         pyro.max_flames = 300
         pyro.flame_tile = 0
         pyro.ff.resolution = 0.2

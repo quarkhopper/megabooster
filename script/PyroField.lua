@@ -93,7 +93,7 @@ function make_flame_effect(pyro, flame, dt)
     -- fire puff smoke particle generation
     ParticleReset()
     ParticleType("smoke")
-    ParticleAlpha(opacity, 0, "linear", 0, 1)
+    ParticleAlpha(opacity, 0, "easeout", 0, 1)
     -- ParticleDrag(0.25)
     ParticleRadius(particle_size)
     local smoke_color = HSVToRGB(Vec(0, 0, puff_color_value))
@@ -132,10 +132,10 @@ end
 function burn_fx(pyro)
     -- Start fires throught the native Teardown mechanism. Base these effects on the
     -- lower resolution metafield for better performance (typically)
-    local points = flatten(pyro.ff.field)
+    -- local points = flatten(pyro.ff.field)
     local num_fires = round((pyro.fire_density / pyro.fire_ignition_radius)^3)
-    for i = 1, #points do
-        local point = points[i]
+    for i = 1, #pyro.flames do
+        local point = pyro.flames[i].parent
         for j = 1, num_fires do
             local random_dir = random_vec(1)
             -- cast in some random dir and start a fire if you hit something. 
@@ -152,9 +152,7 @@ function make_flame_effects(pyro, dt)
     -- for every flame instance, make the appropriate effect
     for i = 1, #pyro.flames do
         local flame = pyro.flames[i]
-        if math.random() < pyro.flame_amount_n then 
-            make_flame_effect(pyro, flame, dt)
-        end
+        make_flame_effect(pyro, flame, dt)
     end
 end
 
@@ -175,12 +173,14 @@ end
 function spawn_flame_group(pyro, point, flame_table, pos)
     pos = pos or point.pos
     for i = 1, pyro.flames_per_spawn do
-        local jitter = fraction_to_range_value(point.power, pyro.jitter_cool, pyro.jitter_hot)
-        local offset_dir = VecNormalize(random_vec(jitter))
-        local flame_pos = VecAdd(pos, VecScale(offset_dir, pyro.ff.resolution))
-        local flame = inst_flame(pos)
-        flame.parent = point
-        table.insert(flame_table, flame)
+        if math.random() < pyro.flame_amount_n then 
+            local jitter = fraction_to_range_value(point.power, pyro.jitter_cool, pyro.jitter_hot)
+            local offset_dir = VecNormalize(random_vec(jitter))
+            local flame_pos = VecAdd(pos, VecScale(offset_dir, pyro.ff.resolution))
+            local flame = inst_flame(pos)
+            flame.parent = point
+            table.insert(flame_table, flame)
+        end
     end
 end
 
@@ -202,6 +202,10 @@ function contact_fx(pyro)
                 local impulse_mag = fraction_to_range_value(point.power ^ 0.5, PYRO.MIN_IMPULSE, PYRO.MAX_IMPULSE) * pyro.impulse_scale
                 ApplyBodyImpulse(push_body, body_center, VecScale(body_dir, impulse_mag))
                 Paint(hit_point, random_float(0.5, 1), "explosion", random_float(0, 1))
+                if math.random() < pyro.physical_damage_factor then 
+                    local hole_scale = math.random()
+                    MakeHole(point.pos, hole_scale * 3, hole_scale * 2, hole_scale)
+                end
             end
         end
         local player_vel = VecLength(GetPlayerVelocity())
@@ -216,9 +220,9 @@ end
 function check_hurt_player(pyro)
     local player_trans = GetPlayerTransform()
     local player_pos = player_trans.pos
-    local points = flatten(pyro.ff.field)
-    for i = 1, #points do
-        local point = points[i]
+    -- local points = flatten(pyro.ff.field)
+    for i = 1, #pyro.flames do
+        local point = pyro.flames[i].parent
         -- hurt player
         local vec_to_player = VecSub(point.pos, player_pos)
         local dist_to_player = VecLength(vec_to_player)

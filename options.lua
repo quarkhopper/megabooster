@@ -4,7 +4,7 @@
 function init()
     keybind_options = {
         KEY.IGNITION,
-        KEY.STOP_FX,
+        KEY.CLEAR,
         KEY.OPTIONS,
         KEY.DEBUG}
     updating_key = nil
