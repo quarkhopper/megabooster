@@ -242,8 +242,6 @@ function create_booster_option_set()
 	oSet.flame_life.range.upper = 1
 	oSet.flame_life.step = 0.001
 	oSet.options[#oSet.options + 1] = oSet.flame_life
-
-	oSet.physical_damage_factor.value = 0
 	return oSet
 end
 

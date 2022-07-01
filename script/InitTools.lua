@@ -35,7 +35,7 @@ function init_pyro(tool)
     end
 
     if tool == TOOL.BOOSTER then 
-        pyro.fade_magnitude = 10
+        pyro.fade_magnitude = 80
         pyro.hot_particle_size = 0.6
         pyro.cool_particle_size = 1
         pyro.impulse_radius = 3

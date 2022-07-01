@@ -22,6 +22,7 @@ function clear_boosters()
 		Delete(boosters[i])
 	end
 	boosters = {}
+    PB_.ignition = false
 end
 
 function spawn_booster()
@@ -60,7 +61,6 @@ function booster_tick(dt)
             local booster_trans = GetBodyTransform(booster_body)
             local l_inj_center = Vec(0, 1, -0.1)
             local w_inj_center = TransformToParentPoint(booster_trans, l_inj_center)
-
             local booster_vel = GetBodyVelocity(booster_body)
             for i = 1, PB_.injection_count do
                 local l_inj_dir = random_vec(1, Vec(0, -1, 0), 60)
@@ -71,6 +71,18 @@ function booster_tick(dt)
                 if DEBUG_MODE then 
                     DebugLine(w_inj_center, w_inj_pos)
                 end
+            end
+            if not DEBUG_MODE then 
+                local flame_pos = TransformToParentPoint(booster_trans, Vec(0,3,0))
+                local light_color = HSVToRGB(TOOL.BOOSTER.pyro.color_hot)
+                PointLight(flame_pos, light_color[1], light_color[2], light_color[3], 10)
+                ParticleReset()
+                ParticleType("smoke")
+                ParticleAlpha(1, 0, "easeout", 0, 1)
+                ParticleRadius(0.5)
+                local smoke_color = HSVToRGB(Vec(0, 0, 0.3))
+                ParticleColor(smoke_color[1], smoke_color[2], smoke_color[3])
+                SpawnParticle(flame_pos, Vec(), 0.2)
             end
             PlayLoop(fire_sound, booster_trans.pos, 10)
             PlayLoop(rumble_sound, booster_trans.pos, 10)

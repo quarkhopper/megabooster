@@ -22,7 +22,7 @@ function init()
 
 	primary_shoot_timer = 0
 	secondary_shoot_timer = 0
-	primary_shoot_delay = 1
+	primary_shoot_delay = 0.5
 	-- secondary_shoot_delay = 0.5
 	-- prevent shooting while the player is grabbing things, etc
 	shoot_lock = false

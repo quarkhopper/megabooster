@@ -34,6 +34,7 @@ function inst_pyro()
     inst.flame_opacity = 1
     inst.impulse_scale = 1
     inst.impulse_radius = 5
+    inst.damage_radius = 1
     inst.fire_ignition_radius = 1
     inst.fire_density = 1
     inst.physical_damage_factor = 0.5
@@ -202,9 +203,9 @@ function contact_fx(pyro)
                 local impulse_mag = fraction_to_range_value(point.power ^ 0.5, PYRO.MIN_IMPULSE, PYRO.MAX_IMPULSE) * pyro.impulse_scale
                 ApplyBodyImpulse(push_body, body_center, VecScale(body_dir, impulse_mag))
                 Paint(hit_point, random_float(0.5, 1), "explosion", random_float(0, 1))
-                if math.random() < pyro.physical_damage_factor then 
-                    local hole_scale = math.random()
-                    MakeHole(point.pos, hole_scale * 3, hole_scale * 2, hole_scale)
+                if math.random() < pyro.physical_damage_factor and dist < pyro.damage_radius then 
+                    local hole_scale = math.random() * point.power ^ 0.5
+                    MakeHole(point.pos, hole_scale * 4, hole_scale * 3, hole_scale * 2)
                 end
             end
         end
