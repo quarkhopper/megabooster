@@ -1,7 +1,9 @@
 <prefab version="0.5.4">
 	<group id_="1311586956" open_="true" pos="0.0 0.0 0.0" rot="0.0 0.0 0.0">
 		<body id_="1724881664" open_="true" tags="booster" pos="0.0 0.0 0.0" dynamic="true">
-			<vox id_="628987392" open_="true" tags="booster nocull" pos="0 0 0" rot="0.0 0.0 0.0" file="MOD/vox/pyro_booster.vox"/>
+			<vox id_="628987392" open_="true" tags="booster nocull" pos="0 0 0" rot="0.0 0.0 0.0" file="MOD/vox/pyro_booster.vox">
+				<joint id_="556631232" name="attach" pos="0.0 4.0 0.0" size="1" rotstrength="1" rotspring="1" collide="true"/>
+			</vox>
 		</body>
 	</group>
 </prefab>

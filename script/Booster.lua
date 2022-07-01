@@ -8,10 +8,12 @@ PB_.booster = nil
 PB_.ignition = false
 PB_.injection_count = 10
 PB_.burn_radius = 1
-PB_.body = nil
+PB_.booster_body = nil
+PB_.host_body = nil
 PB_.power = 0
 PB_.ramp = 1 -- time to full power\
 PB_.impulse_const = 1
+PB_.joint_offset = 4
 
 debugline = {Vec(), Vec()}
 
@@ -25,16 +27,18 @@ function respawn_booster()
         local hit_body = GetShapeBody(shape)
         local trans = nil
         if hit_body ~= 1 and hit_body ~= nil then 
-            local spawn_point = VecAdd(hit_point, VecScale(normal, 5.5))
+            local spawn_point = VecAdd(hit_point, VecScale(normal, PB_.joint_offset))
             local spawn_quat = quat_between_vecs(Vec(0,1,0), VecScale(normal, -1))
             trans = Transform(spawn_point, spawn_quat)
+            PB_.host_body = hit_body
         else
 		    trans = Transform(hit_point, QuatEuler(0,0,0))
+            PB_.host_body = nil
         end
         if PB_ ~= nil then 
-            Delete(PB_.body)
+            Delete(PB_.booster_body)
         end
-		PB_.body = Spawn("MOD/prefab/pyro_booster.xml", trans, false, true)[1]
+		PB_.booster_body = Spawn("MOD/prefab/pyro_booster.xml", trans, false, true)[1]
 	end
 end
 
@@ -47,17 +51,17 @@ function booster_tick(dt)
     if PB_.ignition then
         PB_.power = math.min(PB_.power + (PB_.ramp * dt), 1)
         TOOL.BOOSTER.pyro.impulse_scale = TOOL.BOOSTER.impulse.value * PB_.impulse_const * PB_.power
-        local booster_trans = GetBodyTransform(PB_.body)
-        local l_inj_center = Vec(0, 5, 0)
+        local booster_trans = GetBodyTransform(PB_.booster_body)
+        local l_inj_center = Vec(0, 1, 0)
         local w_inj_center = TransformToParentPoint(booster_trans, l_inj_center)
-        local booster_vel = GetBodyVelocity(PB_.body)
+        local booster_vel = GetBodyVelocity(PB_.booster_body)
         for i = 1, PB_.injection_count do
             local l_inj_dir = random_vec(1, Vec(0, -1, 0), 60)
             local w_inj_dir = TransformToParentVec(booster_trans, l_inj_dir)
             local w_inj_pos = VecAdd(w_inj_center, VecScale(w_inj_dir, PB_.burn_radius))
             local magnitude = TOOL.BOOSTER.pyro.ff.max_force / 2
             apply_force(TOOL.BOOSTER.pyro.ff, w_inj_pos, magnitude)
-            ApplyBodyImpulse(PB_.body, w_inj_center, VecScale(VecScale(w_inj_dir, -1), magnitude * TOOL.BOOSTER.pyro.impulse_scale))
+            ApplyBodyImpulse(PB_.booster_body, w_inj_center, VecScale(VecScale(w_inj_dir, -1), magnitude * TOOL.BOOSTER.pyro.impulse_scale))
             if DEBUG_MODE then 
                 DebugLine(w_inj_center, w_inj_pos)
             end

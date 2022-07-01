@@ -341,7 +341,7 @@ function handle_input(dt)
 				
 				-- ignition
 				if InputPressed(KEY.IGNITION.key) then
-					if PB_.body ~= nil then
+					if PB_.booster_body ~= nil then
 						booster_ignition_toggle()
 					end
 				end
