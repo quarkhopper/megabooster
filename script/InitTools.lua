@@ -38,7 +38,7 @@ function init_pyro(tool)
         pyro.fade_magnitude = 80
         pyro.hot_particle_size = 0.6
         pyro.cool_particle_size = 0.8
-        pyro.impulse_radius = 3
+        pyro.impulse_radius = 2
         pyro.smoke_life = 1
         pyro.smoke_amount_n = 0.1
         pyro.flame_opacity = 0.8

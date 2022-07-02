@@ -6,7 +6,7 @@ fire_sound = LoadLoop("MOD/snd/rocketfire.ogg")
 PB_ = {}
 PB_.ignition = false
 PB_.injection_count = 10
-PB_.burn_radius = 0.1
+PB_.burn_radius = 0.5
 PB_.power = 0
 PB_.ramp = 1 -- time to full power\
 PB_.impulse_const = 1
@@ -25,7 +25,7 @@ function inst_booster(trans)
     inst.t_mount = QuatEuler(0, 0, 0)
     inst.t_bell = QuatEuler(0, 0, 0)
     inst.gimbal = QuatEuler(0, 0, 0)
-    inst.gimlim = 2
+    inst.gimlim = 10
     return inst
 end
 
@@ -97,7 +97,7 @@ function booster_tick(dt)
             PB_.power = math.min(PB_.power + (PB_.ramp * dt), 1)
             TOOL.BOOSTER.pyro.impulse_scale = TOOL.BOOSTER.impulse.value * PB_.impulse_const * PB_.power
             local booster_trans = GetBodyTransform(booster.bell)
-            local l_inj_center = Vec(0, 2, 0)
+            local l_inj_center = Vec(0, 1, 0)
             local w_inj_center = TransformToParentPoint(booster_trans, l_inj_center)
             local booster_vel = GetBodyVelocity(booster.bell)
             for i = 1, PB_.injection_count do
@@ -106,6 +106,9 @@ function booster_tick(dt)
                 local w_inj_pos = VecAdd(w_inj_center, VecScale(w_inj_dir, PB_.burn_radius))
                 local magnitude = TOOL.BOOSTER.pyro.ff.max_force / 2
                 apply_force(TOOL.BOOSTER.pyro.ff, w_inj_pos, magnitude)
+                local force_vec = VecScale(TransformToParentVec(booster_trans, Vec(0, 1, 0)), magnitude * 1)
+                local force_point = TransformToParentPoint(booster_trans, Vec(0,2,0))
+                ApplyBodyImpulse(booster.bell, force_point, force_vec)
                 if DEBUG_MODE then 
                     DebugLine(w_inj_center, w_inj_pos)
                 end
