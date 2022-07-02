@@ -37,11 +37,11 @@ function init_pyro(tool)
     if tool == TOOL.BOOSTER then 
         pyro.fade_magnitude = 80
         pyro.hot_particle_size = 0.6
-        pyro.cool_particle_size = 1
+        pyro.cool_particle_size = 0.8
         pyro.impulse_radius = 3
         pyro.smoke_life = 1
         pyro.smoke_amount_n = 0.1
-        pyro.flame_opacity = 0.5
+        pyro.flame_opacity = 0.8
         pyro.max_player_hurt = 0.1
         pyro.flames_per_spawn = 4
         pyro.flame_light_intensity = 4
@@ -49,7 +49,7 @@ function init_pyro(tool)
         pyro.fire_density = 10
         pyro.max_flames = 300
         pyro.flame_tile = 0
-        pyro.ff.resolution = 0.2
+        pyro.ff.resolution = 0.1
         pyro.ff.max_sim_points = 500
         pyro.ff.max_force = 100
         pyro.ff.extend_scale = 1.5

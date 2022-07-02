@@ -199,7 +199,7 @@ function create_mode_option_set(name, display_name)
 
 	oSet.physical_damage_factor = create_mode_option(
 		option_type.numeric, 
-		0.1,
+		0.0,
 		"physical_damage_factor",
 		"Physical damange modifier")
 	oSet.physical_damage_factor.range.lower = 0

@@ -1,0 +1,9 @@
+<prefab version="0.5.4">
+	<group id_="1311586956" open_="true" pos="0.0 0.0 0.0" rot="0.0 0.0 0.0">
+		<body id_="1724881664" open_="true" tags="booster_bell" pos="0.0 0.0 0.0" dynamic="true">
+			<vox id_="111111111" open_="true" tags="nocull" pos="0 0 0" rot="0 0 0" file="MOD/vox/pyro_booster.vox" object="bell">
+				<joint id_="556631233" name="gimbal" pos="0.0 2.9 0.0" size="1.2" rotstrength="1" rotspring="1" collide="true" limits="0 20"/>
+			</vox>
+		</body>
+	</group>
+</prefab>
