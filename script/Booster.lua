@@ -88,6 +88,10 @@ function booster_ignition_toggle()
 end
 
 function set_gimbal(booster)
+    if PB_.gim_apply == 0 then 
+        booster.gimbal = QuatEuler(0, 0, 0) 
+        return
+    end
     local q_heading = QuatSlerp(booster.t_bell.rot, booster.t_mount.rot, 0.5)
     local v_heading = QuatRotateVec(q_heading, Vec(0,1,0))
     local q_diff = quat_between_vecs(v_heading, booster.v_home)
