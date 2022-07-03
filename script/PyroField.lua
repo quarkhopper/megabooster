@@ -24,7 +24,7 @@ function inst_pyro()
     inst.flame_light_intensity = 4 
     inst.cool_particle_size = 1
     inst.hot_particle_size = 0.5
-    inst.smoke_life = 3
+    inst.smoke_life = 1
     inst.smoke_amount_n = 0.2
     inst.flame_amount_n = 1
     inst.render_flames = true

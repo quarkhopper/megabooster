@@ -24,7 +24,7 @@ function migrate_option_set(oSet)
         if oSet.impulse == nil then 
             oSet.impulse = create_option(
                 option_type.numeric, 
-                0.3,
+                0.1,
                 "impulse",
                 "Impulse")
             oSet.impulse.range.lower = 0
