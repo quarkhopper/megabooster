@@ -13,9 +13,14 @@ PB_.impulse_const = 10
 PB_.joint_offset = 4.7
 PB_.inj_center = Vec(0, 2, 0)
 PB_.stand_body = nil
+PB_.gim_lim = 30
+PB_.gim_apply = 0.5
+PB_.real_flames = false
+PB_.impulse = 0.5
+PB_.pretty_flame_amount = 0.5
 
 boosters = {}
-stands = {}
+-- stands = {}
 
 debugline = {Vec(), Vec()}
 
@@ -62,20 +67,20 @@ function spawn_booster()
 	end
 end
 
-function spawn_stand()
-    local hit_point = get_shoot_hit(100)
-    if hit_point then
-        local trans = Transform(hit_point, QuatEuler(0,0,0))
-        table.insert(stands, Spawn("MOD/prefab/pyro_stand.xml", trans)[1])
-    end
-end
+-- function spawn_stand()
+--     local hit_point = get_shoot_hit(100)
+--     if hit_point then
+--         local trans = Transform(hit_point, QuatEuler(0,0,0))
+--         table.insert(stands, Spawn("MOD/prefab/pyro_stand.xml", trans)[1])
+--     end
+-- end
 
-function clear_stands()
-    for i = 1, #stands do
-        Delete(stands[i])
-    end
-    stands = {}
-end
+-- function clear_stands()
+--     for i = 1, #stands do
+--         Delete(stands[i])
+--     end
+--     stands = {}
+-- end
 
 function booster_ignition_toggle()
     PB_.power = 0
@@ -88,17 +93,16 @@ function set_gimbal(booster)
     local q_diff = quat_between_vecs(v_heading, booster.v_home)
     local dp_diff = VecDot(booster.v_home, v_heading)
     local error = 1 - ((VecDot(booster.v_home, v_heading) + 1) / 2)
-    local q_gimbal = QuatSlerp(QuatEuler(0,0,0), q_diff, TOOL.BOOSTER.gimbal_strength.value)
+    local q_gimbal = QuatSlerp(QuatEuler(0, 0, 0), q_diff, PB_.gim_apply)
     if DEBUG_MODE then 
         DebugLine(booster.t_mount.pos, VecAdd(booster.t_mount.pos, VecScale(v_heading, 5)), 1, 0, 0)
         DebugLine(booster.t_mount.pos, VecAdd(booster.t_mount.pos, VecScale(booster.v_home, 5)), 0, 1, 0)
     end
     local rot_x,rot_y,rot_z = GetQuatEuler(q_gimbal)
-    local lim = TOOL.BOOSTER.gimbal_max_angle.value
     booster.gimbal = QuatEuler(
-        math.max(-lim, math.min(lim, rot_x)),
-        math.max(-lim, math.min(lim, rot_y)),
-        math.max(-lim, math.min(lim, rot_z))
+        math.max(-PB_.gim_lim, math.min(PB_.gim_lim, rot_x)),
+        math.max(-PB_.gim_lim, math.min(PB_.gim_lim, rot_y)),
+        math.max(-PB_.gim_lim, math.min(PB_.gim_lim, rot_z))
     )
 end
 
@@ -111,63 +115,76 @@ function booster_tick(dt)
         ConstrainOrientation(booster.bell, booster.mount, QuatRotateQuat(booster.gimbal, booster.t_bell.rot), booster.t_mount.rot)
         if PB_.ignition then
             PB_.power = math.min(PB_.power + (PB_.ramp * dt), 1)
-            TOOL.BOOSTER.pyro.impulse_scale = TOOL.BOOSTER.impulse.value * PB_.impulse_const * PB_.power
+            TOOL.BOOSTER.pyro.impulse_scale = PB_.impulse * PB_.impulse_const * PB_.power
             local booster_trans = GetBodyTransform(booster.bell)
             local l_inj_center = PB_.inj_center
             local w_inj_center = TransformToParentPoint(booster_trans, l_inj_center)
-            local booster_vel = GetBodyVelocity(booster.bell)
             local total_thrust = 0
+            local magnitude = TOOL.BOOSTER.pyro.ff.max_force / 2
+            local force_mag = magnitude * TOOL.BOOSTER.pyro.impulse_scale
+            local pretty_color = blend_color(math.random(), 
+                HSVToRGB(TOOL.BOOSTER.pyro.color_hot), 
+                HSVToRGB(TOOL.BOOSTER.pyro.color_cool))
             for i = 1, PB_.injection_count do
                 local l_inj_dir = random_vec(1, Vec(0, -1, 0), 90)
                 local w_inj_dir = TransformToParentVec(booster_trans, l_inj_dir)
-                local w_inj_pos = VecAdd(w_inj_center, VecScale(w_inj_dir, PB_.burn_radius))
-                local magnitude = TOOL.BOOSTER.pyro.ff.max_force / 2
-                apply_force(TOOL.BOOSTER.pyro.ff, w_inj_pos, magnitude)
+                if PB_.real_flames then 
+                    local w_inj_pos = VecAdd(w_inj_center, VecScale(w_inj_dir, PB_.burn_radius))
+                    apply_force(TOOL.BOOSTER.pyro.ff, w_inj_pos, magnitude)
+                end
+            -- aeaeaesthetic flames
+                if not DEBUG_MODE and not PB_.real_flames then
+                        if math.random() < PB_.pretty_flame_amount then
+                            local light_color = blend_color(math.random(), 
+                                HSVToRGB(TOOL.BOOSTER.pyro.color_hot), 
+                                HSVToRGB(TOOL.BOOSTER.pyro.color_cool))
+                            PointLight(VecAdd(random_vec(1), w_inj_center), pretty_color[1], pretty_color[2], pretty_color[3], 1)
+                            ParticleReset()
+                            ParticleType("smoke")
+                            ParticleTile(5)
+                            ParticleAlpha(1, 0, "easeout", 0, 1)
+                            ParticleRadius(0.5)
+                            local smoke_color = HSVToRGB(Vec(0, 0, 0.8))
+                            ParticleColor(smoke_color[1], smoke_color[2], smoke_color[3])
+                            SpawnParticle(w_inj_center, VecScale(l_inj_dir, 10), 0.2)
+                    end
+                end
+
                 -- push on the booster bell the opposite way
-                local force_mag = magnitude * TOOL.BOOSTER.pyro.impulse_scale
                 total_thrust = total_thrust + force_mag
                 local force_dir = VecScale(w_inj_dir, -1)
                 local force_vec = VecScale(force_dir, force_mag)
                 ApplyBodyImpulse(booster.bell, w_inj_center, force_vec)
-                -- if DEBUG_MODE then 
-                --     DebugLine(w_inj_center, w_inj_pos)
-                --     DebugLine(w_inj_center, VecAdd(w_inj_pos, VecScale(force_dir, 1)), 1, 0, 0)
-                -- end
             end
-            -- DebugPrint(tostring(total_thrust))
-            if not DEBUG_MODE then 
-                local flame_pos = TransformToParentPoint(booster_trans, Vec(0,2,0))
-                local light_color = HSVToRGB(TOOL.BOOSTER.pyro.color_hot)
-                PointLight(flame_pos, light_color[1], light_color[2], light_color[3], 10)
-                ParticleReset()
-                ParticleType("smoke")
-                ParticleAlpha(1, 0, "easeout", 0, 1)
-                ParticleRadius(0.5)
-                local smoke_color = HSVToRGB(Vec(0, 0, 0.3))
-                ParticleColor(smoke_color[1], smoke_color[2], smoke_color[3])
-                SpawnParticle(flame_pos, Vec(), 0.2)
+
+            -- add a little glow inside the bell
+            if not DEBUG_MODE and PB_.real_flames then 
+                PointLight(w_inj_center, pretty_color[1], pretty_color[2], pretty_color[3], 10)
             end
+
             PlayLoop(fire_sound, booster_trans.pos, 10)
             PlayLoop(rumble_sound, booster_trans.pos, 10)
+        else
+            PB_.power = 0
         end
     end
 end
 
-PID_ = {}
-PID_.last_error = 0
-PID_.last_integral = 0
-PID_.kp = 0.3
-PID_.ki = 0.3
-PID_.kd = 0.3
-PID_.error = 0
+-- PID_ = {}
+-- PID_.last_error = 0
+-- PID_.last_integral = 0
+-- PID_.kp = 0.3
+-- PID_.ki = 0.3
+-- PID_.kd = 0.3
+-- PID_.error = 0
 
-function PID(set_point, actual)
-	PID_.error = set_point - actual
-	PID_.integral = PID_.last_integral + PID_.error
-	PID_.derivative = PID_.error - PID_.last_error	
+-- function PID(set_point, actual)
+-- 	PID_.error = set_point - actual
+-- 	PID_.integral = PID_.last_integral + PID_.error
+-- 	PID_.derivative = PID_.error - PID_.last_error	
 		
-	PID_.last_error = PID_.error
-	PID_.last_integral = PID_.integral
+-- 	PID_.last_error = PID_.error
+-- 	PID_.last_integral = PID_.integral
 	
-    return PID_.kp * PID_.error + PID_.ki * PID_.integral + PID_.kd * PID_.derivative
-end
+--     return PID_.kp * PID_.error + PID_.ki * PID_.integral + PID_.kd * PID_.derivative
+-- end

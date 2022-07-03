@@ -5,7 +5,7 @@ function init()
     keybind_options = {
         KEY.IGNITION,
         KEY.CLEAR,
-        KEY.STAND,
+        -- KEY.STAND,
         KEY.OPTIONS,
         KEY.DEBUG}
     updating_key = nil

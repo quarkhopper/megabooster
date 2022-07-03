@@ -30,7 +30,6 @@ function inst_pyro()
     inst.render_flames = true
     inst.flame_puff_life = 0.5
     inst.flame_jitter = 0
-    inst.flame_tile = 0
     inst.flame_opacity = 1
     inst.fire_ignition_radius = 1
     inst.fire_density = 1
@@ -63,7 +62,7 @@ function make_flame_effect(pyro, flame, dt)
     if PYRO.RAINBOW_MODE then
         -- Rainbow mode just cycles one color for the entire field and uses that color 
         -- for all fire effects universally
-        PYRO.RAINBOW[1] = cycle_value(PYRO.RAINBOW[1], dt, 0, 359)
+        PYRO.RAINBOW[1] = cycle_value(PYRO.RAINBOW[1], dt * 10, 0, 359)
         color = HSVToRGB(PYRO.RAINBOW)
         -- intensity is set to a hardcoded value that works well for displaying colors. Too high
         -- and the colors are washed out.
@@ -97,7 +96,9 @@ function make_flame_effect(pyro, flame, dt)
     local smoke_color = HSVToRGB(Vec(0, 0, puff_color_value))
     ParticleColor(smoke_color[1], smoke_color[2], smoke_color[3])
     ParticleGravity(PYRO.GRAVITY)
-    ParticleTile(pyro.flame_tile)
+    local tile = 0
+    if math.random(2) == 1 then tile = 5 end
+    ParticleTile(tile)
     -- Apply a little random jitter if specified by the options, for the specified lifetime
     -- in options.
     SpawnParticle(VecAdd(flame.pos, random_vec(pyro.flame_jitter)), Vec(), pyro.flame_puff_life)

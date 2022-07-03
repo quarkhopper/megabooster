@@ -129,6 +129,10 @@ function option_from_string(ser)
 	return option
 end
 
+function copy_option(original)
+	return option_from_string(option_to_string(original))
+end
+
 function create_option_set_by_name(name)
 	if name == "general" then
 		return create_option_set("general", "General settings")		

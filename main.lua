@@ -51,7 +51,7 @@ function draw(dt)
 
 	-- on screen display to help the player remember what keys do what
 	UiPush()
-		UiTranslate(0, UiHeight() - UI.OPTION_TEXT_SIZE * 7)
+		UiTranslate(0, UiHeight() - UI.OPTION_TEXT_SIZE * 5)
 		UiAlign("left")
 		UiFont("bold.ttf", UI.OPTION_TEXT_SIZE)
 		UiTextOutline(0,0,0,1,0.5)
@@ -59,8 +59,8 @@ function draw(dt)
 		UiText("Left click to place booster", true)
 		UiText(KEY.CLEAR.key.." to clear all boosters", true)
 		UiText(KEY.IGNITION.key.." for ignition toggle", true)
-		UiText(KEY.STAND.key.." to spawn a launch stand at target", true)
-		UiText("ALT + "..KEY.STAND.key.." to clear all stands", true)
+		-- UiText(KEY.STAND.key.." to spawn a launch stand at target", true)
+		-- UiText("ALT + "..KEY.STAND.key.." to clear all stands", true)
 		UiText(KEY.OPTIONS.key.." for booster options", true)
 		UiText(KEY.DEBUG.key.." for physics debug")
 	UiPop()
@@ -304,8 +304,13 @@ end
 
 function update(dt)
 	if not suspend_ticks then 
+		-- shut down updates if there's an error in init so we don't flood 
+		-- away the error message
 		if TOOL.BOOSTER.pyro == nil then suspend_ticks = true end
-		flame_tick(TOOL.BOOSTER.pyro, dt)
+
+		if PB_.real_flames then 
+			flame_tick(TOOL.BOOSTER.pyro, dt)
+		end
 		booster_tick(dt)
 	end
 end
@@ -350,21 +355,18 @@ function handle_input(dt)
 					end
 				end
 			
-				-- spawn stand
-				stand_tog_time = math.min(stand_tog_time + dt, 0.5)
-				if InputDown(KEY.STAND.key) then 
-					if InputDown("ALT") then 
-						clear_stands()
-					else
-						if stand_tog_time == 0.5 then 
-							spawn_stand()
-						end	
-					end
-					stand_tog_time = 0
-				end
-
-				-- clear stands
-
+				-- -- spawn stand
+				-- stand_tog_time = math.min(stand_tog_time + dt, 0.5)
+				-- if InputDown(KEY.STAND.key) then 
+				-- 	if InputDown("ALT") then 
+				-- 		clear_stands()
+				-- 	else
+				-- 		if stand_tog_time == 0.5 then 
+				-- 			spawn_stand()
+				-- 		end	
+				-- 	end
+				-- 	stand_tog_time = 0
+				-- end
 
 				-- debug mode
 				if InputPressed(KEY.DEBUG.key) then

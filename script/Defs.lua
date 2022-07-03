@@ -33,8 +33,8 @@ end
 KEY = {}
 KEY.DEBUG = setup_keybind("Debug mode", "debug mode", "F11")
 KEY.IGNITION = setup_keybind("Ignition toggle", "ignition", "I")
-KEY.STAND = setup_keybind("Toggle launch stand", "stand", "M")
-KEY.CLEAR = setup_keybind("Clear boosters and stands", "clear", "C")
+-- KEY.STAND = setup_keybind("Toggle launch stand", "stand", "M")
+KEY.CLEAR = setup_keybind("Clear boosters", "clear", "C")
 KEY.OPTIONS = setup_keybind("Options", "options", "O")
 
 CONSTS = {}
