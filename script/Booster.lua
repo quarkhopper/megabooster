@@ -2,6 +2,7 @@
 
 rumble_sound = LoadLoop("MOD/snd/rumble.ogg")
 fire_sound = LoadLoop("MOD/snd/rocketfire.ogg")
+spawn_sound = LoadSound("MOD/snd/clang.ogg")
 
 PB_ = {}
 PB_.ignition = false
@@ -18,9 +19,10 @@ PB_.gim_apply = 0.5
 PB_.real_flames = false
 PB_.impulse = 0.5
 PB_.pretty_flame_amount = 0.5
+PB_.outline_time = 0
+PB_.outlines = {}
 
 boosters = {}
--- stands = {}
 
 debugline = {Vec(), Vec()}
 
@@ -36,7 +38,7 @@ function inst_booster(trans)
     return inst
 end
 
-function delete_booster(booster)
+function delete_booster_bodies(booster)
     Delete(booster.bell)
     Delete(booster.mount)
 end
@@ -44,10 +46,30 @@ end
 function clear_boosters()
 	reset_ff(TOOL.BOOSTER.pyro.ff)
 	for i = 1, #boosters do
-		delete_booster(boosters[i])
+		delete_booster_bodies(boosters[i])
 	end
 	boosters = {}
     PB_.ignition = false
+end
+
+function reattach_boosters()
+    for i = 1, #boosters do
+        local booster = boosters[i]
+        local t_mount = GetBodyTransform(booster.mount)
+        local t_bell = GetBodyTransform(booster.bell)
+        Delete(booster.mount)
+        Delete(booster.bell)
+        booster.mount = Spawn("MOD/prefab/pyro_booster_mount.xml", t_mount, false, true)[1]
+        booster.bell = Spawn("MOD/prefab/pyro_booster_bell.xml", t_bell, false, true)[1]
+        booster.t_mount = t_mount
+        booster.t_bell = t_bell
+        booster.q_home = t_mount.rot
+        booster.v_home = QuatRotateVec(booster.q_home, Vec(0, 1, 0))
+        PlaySound(spawn_sound, t_bell.pos, 10)
+        table.insert(PB_.outlines, booster.mount)
+        table.insert(PB_.outlines, booster.bell) 
+        PB_.outline_time = 0
+    end
 end
 
 function spawn_booster()
@@ -63,24 +85,14 @@ function spawn_booster()
 		    trans = Transform(hit_point, QuatEuler(0,0,0))
             PB_.host_body = nil
         end
-        table.insert(boosters, inst_booster(trans))
+        local booster = inst_booster(trans)
+        table.insert(boosters, booster)
+        PlaySound(spawn_sound,trans.pos, 10)
+        table.insert(PB_.outlines, booster.mount)
+        table.insert(PB_.outlines, booster.bell)
+        PB_.outline_time = 0
 	end
 end
-
--- function spawn_stand()
---     local hit_point = get_shoot_hit(100)
---     if hit_point then
---         local trans = Transform(hit_point, QuatEuler(0,0,0))
---         table.insert(stands, Spawn("MOD/prefab/pyro_stand.xml", trans)[1])
---     end
--- end
-
--- function clear_stands()
---     for i = 1, #stands do
---         Delete(stands[i])
---     end
---     stands = {}
--- end
 
 function booster_ignition_toggle()
     PB_.power = 0
@@ -111,6 +123,14 @@ function set_gimbal(booster)
 end
 
 function booster_tick(dt)
+    if PB_.outline_time < 1 then 
+        PB_.outline_time = math.min(PB_.outline_time + dt, 1)
+        for i = 1, #PB_.outlines do
+            DrawBodyOutline(PB_.outlines[i], 1, 1, 1, 1)
+        end
+    else
+        PB_.outlines = {}
+    end
     for b = 1, #boosters do
         local booster = boosters[b]
         booster.t_bell = GetBodyTransform(booster.bell)
@@ -136,7 +156,7 @@ function booster_tick(dt)
                     local w_inj_pos = VecAdd(w_inj_center, VecScale(w_inj_dir, PB_.burn_radius))
                     apply_force(TOOL.BOOSTER.pyro.ff, w_inj_pos, magnitude)
                 end
-            -- aeaeaesthetic flames
+                -- aeaeaesthetic flames
                 if not DEBUG_MODE and not PB_.real_flames then
                         if math.random() < PB_.pretty_flame_amount then
                             local light_color = blend_color(math.random(), 

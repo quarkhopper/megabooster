@@ -23,7 +23,7 @@ function init()
 	primary_shoot_timer = 0
 	secondary_shoot_timer = 0
 	primary_shoot_delay = 0.5
-	stand_tog_time = 0.1
+	reattach_key_wait = 0.1
 	-- prevent shooting while the player is grabbing things, etc
 	shoot_lock = false
 
@@ -51,7 +51,7 @@ function draw(dt)
 
 	-- on screen display to help the player remember what keys do what
 	UiPush()
-		UiTranslate(0, UiHeight() - UI.OPTION_TEXT_SIZE * 5)
+		UiTranslate(0, UiHeight() - UI.OPTION_TEXT_SIZE * 6)
 		UiAlign("left")
 		UiFont("bold.ttf", UI.OPTION_TEXT_SIZE)
 		UiTextOutline(0,0,0,1,0.5)
@@ -59,8 +59,7 @@ function draw(dt)
 		UiText("Left click to place booster", true)
 		UiText(KEY.CLEAR.key.." to clear all boosters", true)
 		UiText(KEY.IGNITION.key.." for ignition toggle", true)
-		-- UiText(KEY.STAND.key.." to spawn a launch stand at target", true)
-		-- UiText("ALT + "..KEY.STAND.key.." to clear all stands", true)
+		UiText(KEY.REATTACH.key.." to reattach boosters at mounts", true)
 		UiText(KEY.OPTIONS.key.." for booster options", true)
 		UiText(KEY.DEBUG.key.." for physics debug")
 	UiPop()
@@ -355,18 +354,14 @@ function handle_input(dt)
 					end
 				end
 			
-				-- -- spawn stand
-				-- stand_tog_time = math.min(stand_tog_time + dt, 0.5)
-				-- if InputDown(KEY.STAND.key) then 
-				-- 	if InputDown("ALT") then 
-				-- 		clear_stands()
-				-- 	else
-				-- 		if stand_tog_time == 0.5 then 
-				-- 			spawn_stand()
-				-- 		end	
-				-- 	end
-				-- 	stand_tog_time = 0
-				-- end
+				-- reattach thrusters
+				reattach_key_wait = math.min(reattach_key_wait + dt, 0.5)
+				if InputDown(KEY.REATTACH.key) then 
+					if reattach_key_wait == 0.5 then 
+						reattach_boosters()
+					end	
+					reattach_key_wait = 0
+				end
 
 				-- debug mode
 				if InputPressed(KEY.DEBUG.key) then
