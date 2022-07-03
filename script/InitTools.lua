@@ -20,7 +20,7 @@ function load_option_sets()
     PB_.gim_lim = TOOL.BOOSTER.gimbal_max_angle.value
     PB_.gim_apply = fraction_to_range_value(TOOL.BOOSTER.gimbal_stiffness.value, 5, 0)
     PB_.real_flames = TOOL.BOOSTER.real_flames.value == on_off.on
-    PB_.impulse_scale = TOOL.BOOSTER.impulse.value
+    PB_.impulse = TOOL.BOOSTER.impulse.value
     init_pyro(TOOL.BOOSTER)
 
     all_option_sets = {TOOL.BOOSTER, TOOL.GENERAL}

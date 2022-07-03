@@ -175,7 +175,6 @@ function booster_tick(dt)
                 end
 
                 -- push on the booster bell the opposite way
-                total_thrust = total_thrust + force_mag
                 local force_dir = VecScale(w_inj_dir, -1)
                 local force_vec = VecScale(force_dir, force_mag)
                 ApplyBodyImpulse(booster.bell, w_inj_center, force_vec)
