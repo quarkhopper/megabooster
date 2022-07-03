@@ -33,7 +33,8 @@ end
 KEY = {}
 KEY.DEBUG = setup_keybind("Debug mode", "debug mode", "F11")
 KEY.IGNITION = setup_keybind("Ignition toggle", "ignition", "I")
-KEY.CLEAR = setup_keybind("Clear boosters", "clear", "C")
+KEY.STAND = setup_keybind("Toggle launch stand", "stand", "M")
+KEY.CLEAR = setup_keybind("Clear boosters and stands", "clear", "C")
 KEY.OPTIONS = setup_keybind("Options", "options", "O")
 
 CONSTS = {}
@@ -44,7 +45,7 @@ UI = {}
 UI.OPTION_TEXT_SIZE = 18
 UI.OPTION_MODAL_HEADING_SIZE = 24
 UI.OPTION_DESC_SIZE = 14
-UI.OPTION_CONTROL_WIDTH = 1000
+UI.OPTION_CONTROL_WIDTH = 700
 UI.OPTION_COLOR_SLIDER_WIDTH = UI.OPTION_CONTROL_WIDTH - 50
 UI.OPTION_STANDARD_SLIDER_WIDTH = UI.OPTION_CONTROL_WIDTH - 50
 UI.OPTION_BUMP_BUTTON_WIDTH = 10

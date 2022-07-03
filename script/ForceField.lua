@@ -65,8 +65,8 @@ end
 
 function propagate_point_force(ff, point, dt)
     local sample_dirs = burst_patter_dirs(20, 60, 0.2)
-    local resultant_dir = Vec(0,0,0)
-    local dir_found = false
+    local high_trans_dir = Vec(0,0,0)
+    local high_trans_mag = 0
     -- sample for the direction that experiences the most transfer
     for i = 1, #sample_dirs do
         local trans_dir = sample_dirs[i]
@@ -77,20 +77,22 @@ function propagate_point_force(ff, point, dt)
             local trans_mag = point.mag
             if point_prime ~= nil then 
                 trans_mag = math.min(point.mag, ff.max_force - point_prime.mag)
+            else
+                trans_mag = point.mag
             end
-            dir_found = true
-            resultant_dir = VecAdd(resultant_dir, VecScale(trans_dir, trans_mag))
-        else
-            resultant_dir = VecAdd(resultant_dir, VecScale(normal, point.mag))   
-            point.cull = true
+            if trans_mag > high_trans_mag then 
+                high_trans_dir = trans_dir
+                high_trans_mag = trans_mag
+            end
+        else 
             if DEBUG_MODE then 
                 DebugCross(point.pos, 0, 1, 0)
             end
         end
     end
 
-    if dir_found then 
-        local trans_dir = VecNormalize(resultant_dir)
+    if high_trans_mag > 0 then 
+        local trans_dir = high_trans_dir
         local hit, dist, normal, shape = QueryRaycast(point.pos, trans_dir, 2 * ff.resolution * ff.extend_scale)
         if not hit then 
             local coord_prime = round_vec(VecAdd(point.coord, VecScale(trans_dir,  ff.extend_scale)))

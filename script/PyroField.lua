@@ -32,9 +32,6 @@ function inst_pyro()
     inst.flame_jitter = 0
     inst.flame_tile = 0
     inst.flame_opacity = 1
-    inst.impulse_scale = 1
-    inst.impulse_radius = 5
-    inst.damage_radius = 1
     inst.fire_ignition_radius = 1
     inst.fire_density = 1
     inst.physical_damage_factor = 0.5
@@ -185,59 +182,6 @@ function spawn_flame_group(pyro, point, flame_table, pos)
     end
 end
 
-function contact_fx(pyro)
-    local points = flatten(pyro.ff.field)
-    local player_trans = GetPlayerTransform()
-    for i = 1, #points do
-        local point = points[i]
-        -- apply impulse
-        local box = box_vec(point.pos, pyro.impulse_radius)
-        local push_bodies = QueryAabbBodies(box[1], box[2])
-        for i = 1, #push_bodies do
-            local push_body = push_bodies[i]
-            local body_center = TransformToParentPoint(GetBodyTransform(push_body), GetBodyCenterOfMass(push_body))
-            local body_dir = VecSub(body_center, point.pos)
-            local hit, dist = QueryRaycast(point.pos, body_dir, pyro.impulse_radius)
-            if hit then 
-                local hit_point = VecAdd(point.pos, VecScale(body_dir, dist))
-                local impulse_mag = fraction_to_range_value(point.power ^ 0.5, PYRO.MIN_IMPULSE, PYRO.MAX_IMPULSE) * pyro.impulse_scale
-                ApplyBodyImpulse(push_body, body_center, VecScale(body_dir, impulse_mag))
-                Paint(hit_point, random_float(0.5, 1), "explosion", random_float(0, 1))
-                if math.random() < pyro.physical_damage_factor and dist < pyro.damage_radius then 
-                    local hole_scale = math.random() * point.power ^ 0.5
-                    MakeHole(point.pos, hole_scale * 4, hole_scale * 3, hole_scale * 2)
-                end
-            end
-        end
-        local player_vel = VecLength(GetPlayerVelocity())
-        if VecLength(VecSub(player_trans.pos, point.pos)) <= pyro.impulse_radius and player_vel < PYRO.MAX_PLAYER_VEL then
-            local push_mag = fraction_to_range_value(point.power ^ 2, PYRO.MIN_PLAYER_PUSH, PYRO.MAX_PLAYER_PUSH) * pyro.impulse_scale
-            SetPlayerVelocity(VecAdd(GetPlayerVelocity(), VecScale(force_dir, push_mag)))
-        end
-
-    end
-end
-
-function check_hurt_player(pyro)
-    local player_trans = GetPlayerTransform()
-    local player_pos = player_trans.pos
-    -- local points = flatten(pyro.ff.field)
-    for i = 1, #pyro.flames do
-        local point = pyro.flames[i].parent
-        -- hurt player
-        local vec_to_player = VecSub(point.pos, player_pos)
-        local dist_to_player = VecLength(vec_to_player)
-        if dist_to_player < pyro.impulse_radius then
-            local hit = QueryRaycast(point.pos, VecNormalize(vec_to_player), dist_to_player, 0.025)
-            if not hit then             
-                local factor = 1 - (dist_to_player / pyro.impulse_radius)
-                factor = factor * (point.mag / pyro.ff.max_force) + 0.01
-                hurt_player(factor * pyro.max_player_hurt)
-            end
-        end
-    end
-end
-
 function flame_tick(pyro, dt)
     force_field_ff_tick(pyro.ff, dt)
     
@@ -248,7 +192,5 @@ function flame_tick(pyro, dt)
         end
     end
 
-    contact_fx(pyro)
     burn_fx(pyro)
-    check_hurt_player(pyro)
 end

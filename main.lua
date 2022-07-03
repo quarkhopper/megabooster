@@ -23,7 +23,7 @@ function init()
 	primary_shoot_timer = 0
 	secondary_shoot_timer = 0
 	primary_shoot_delay = 0.5
-	-- secondary_shoot_delay = 0.5
+	stand_tog_time = 0.1
 	-- prevent shooting while the player is grabbing things, etc
 	shoot_lock = false
 
@@ -51,7 +51,7 @@ function draw(dt)
 
 	-- on screen display to help the player remember what keys do what
 	UiPush()
-		UiTranslate(0, UiHeight() - UI.OPTION_TEXT_SIZE * 5)
+		UiTranslate(0, UiHeight() - UI.OPTION_TEXT_SIZE * 7)
 		UiAlign("left")
 		UiFont("bold.ttf", UI.OPTION_TEXT_SIZE)
 		UiTextOutline(0,0,0,1,0.5)
@@ -59,6 +59,8 @@ function draw(dt)
 		UiText("Left click to place booster", true)
 		UiText(KEY.CLEAR.key.." to clear all boosters", true)
 		UiText(KEY.IGNITION.key.." for ignition toggle", true)
+		UiText(KEY.STAND.key.." to spawn a launch stand at target", true)
+		UiText("ALT + "..KEY.STAND.key.." to clear all stands", true)
 		UiText(KEY.OPTIONS.key.." for booster options", true)
 		UiText(KEY.DEBUG.key.." for physics debug")
 	UiPop()
@@ -110,16 +112,18 @@ function draw_option_modal()
 				UiTranslate(200, 220)
 				UiAlign("left top")
 				UiPush()
-					for i = 1, #page_options.options do
-						local option = page_options.options[i]
+					local count = 1
+					for key, option in pairs(page_options.options) do
+						-- local option = page_options.options[i]
 						draw_option(option)
-						if math.fmod(i, 7) == 0 then 
+						if math.fmod(count, 7) == 0 then 
 							UiPop()
 							UiTranslate(UI.OPTION_CONTROL_WIDTH, 0)
 							UiPush()
 						else
 							UiTranslate(0, 100)
 						end
+						count = count + 1
 					end
 				UiPop()
 			UiPop()
@@ -209,7 +213,7 @@ function draw_option(option)
 			UiAlign("left")
 			UiTranslate(0,30)
 			local value = make_option_control(option, UI.OPTION_CONTROL_WIDTH)
-			mode_option_set_value(option, value)
+			option_set_value(option, value)
 		UiPop()
 	UiPop()
 end
@@ -317,7 +321,6 @@ end
 function handle_input(dt)
 	if editing_options then return end
 	primary_shoot_timer = math.max(primary_shoot_timer - dt, 0)
-	-- secondary_shoot_timer = math.max(secondary_shoot_timer - dt, 0)
 
 	if GetString("game.player.tool") == REG.TOOL_KEY  then 
 		if GetPlayerVehicle() == 0 then 
@@ -347,6 +350,22 @@ function handle_input(dt)
 					end
 				end
 			
+				-- spawn stand
+				stand_tog_time = math.min(stand_tog_time + dt, 0.5)
+				if InputDown(KEY.STAND.key) then 
+					if InputDown("ALT") then 
+						clear_stands()
+					else
+						if stand_tog_time == 0.5 then 
+							spawn_stand()
+						end	
+					end
+					stand_tog_time = 0
+				end
+
+				-- clear stands
+
+
 				-- debug mode
 				if InputPressed(KEY.DEBUG.key) then
 					DEBUG_MODE = not DEBUG_MODE

@@ -1,19 +1,9 @@
 #include "ForceField.lua"
 
-function create_option_set()
-	local inst = {}
-	inst.name = "Unnamed"
-	inst.display_name = "Unnamed option set"
-	inst.version = CURRENT_VERSION
-	inst.options = {}
-
-	return inst
-end
-
 function option_set_to_string(inst)
 	local ser_parts = {inst.name, inst.display_name, inst.version}
-	for i = 1, #inst.options do
-		ser_parts[#ser_parts + 1] = mode_option_to_string(inst.options[i])
+	for key, option in pairs(inst.options) do
+		ser_parts[#ser_parts + 1] = option_to_string(option)
 	end
 	return join_strings(ser_parts, DELIM.OPTION_SET)
 end
@@ -25,31 +15,31 @@ end
 
 function load_option_set(name, create_if_not_found)
 	local ser = GetString(REG.PREFIX_TOOL_OPTIONS.."."..name)
+	local options = nil
 	if ser == "" or not can_migrate(ser) then
 		if create_if_not_found then
-			local test = create_option_set_by_name(name)
-			return test
+			options = create_option_set_by_name(name)
 		else 
 			return nil
 		end
+	else
+		options = option_set_from_string(ser)
 	end
-	ser = migrate_option_set(ser)
-	local options = option_set_from_string(ser)
-	options.name = name
+	options = migrate_option_set(options)
 	return options
 end
 
 function option_set_from_string(ser)
-	local options = create_option_set()
-	options.options = {}
+	local options = {}
 	local option_sers = split_string(ser, DELIM.OPTION_SET)
 	options.name = option_sers[1]
 	options.display_name = option_sers[2]
 	options.version = option_sers[3]
+	options.options = {}
 	local parse_start_index = 4
 	for i = parse_start_index, #option_sers do
 		local option_ser = option_sers[i]
-		local option = mode_option_from_string(option_ser)
+		local option = option_from_string(option_ser)
 		options[option.key] = option
 		table.insert(options.options, option)
 	end
@@ -69,7 +59,7 @@ function option_set_reset(name)
 	ClearKey(REG.PREFIX_TOOL_OPTIONS.."."..name)
 end
 
-function create_mode_option(o_type, value, key, friendly_name)
+function create_option(o_type, value, key, friendly_name)
 	local inst = {}
 	inst.type = o_type or option_type.numeric
 	inst.value = value
@@ -84,7 +74,7 @@ function create_mode_option(o_type, value, key, friendly_name)
 	return inst
 end
 
-function mode_option_to_string(inst)
+function option_to_string(inst)
 	local parts = {}
 	parts[1] = tostring(inst.type)
 	if inst.type == option_type.color then
@@ -102,7 +92,7 @@ function mode_option_to_string(inst)
 	return join_strings(parts, DELIM.OPTION)
 end
 
-function mode_option_set_value(inst, value)
+function option_set_value(inst, value)
 	if inst.type == option_type.numeric then
 		inst.value = bracket_value(value, inst.range.upper, inst.range.lower) or 0
 	else
@@ -110,8 +100,8 @@ function mode_option_set_value(inst, value)
 	end
 end
 
-function mode_option_from_string(ser)
-	local option = create_mode_option()
+function option_from_string(ser)
+	local option = create_option()
 	local parts = split_string(ser, DELIM.OPTION)
 	option.type = tonumber(parts[1])
 	if option.type == option_type.bool then
@@ -141,9 +131,9 @@ end
 
 function create_option_set_by_name(name)
 	if name == "general" then
-		return create_general_option_set()		
+		return create_option_set("general", "General settings")		
 	elseif name == "booster" then 
-		return create_booster_option_set()
+		return create_option_set("booster", "Booster settings")
 	end
 end
 
@@ -159,89 +149,12 @@ on_off = enum {
 	"on"
 }
 
-function create_general_option_set()
-    local oSet = create_option_set()
-    oSet.name = "general"
-	oSet.display_name = "General"
-    oSet.version = CURRENT_VERSION
-
-	oSet.rainbow_mode = create_mode_option(
-		option_type.enum,
-		on_off.off,
-		"rainbow_mode",
-		"Rainbow mode")
-	oSet.rainbow_mode.accepted_values = on_off
-	oSet.options[#oSet.options + 1] = oSet.rainbow_mode
-
-	return oSet
-end
-
-function create_mode_option_set(name, display_name)
-    local oSet = create_option_set()
+function create_option_set(name, display_name)
+    local oSet = {}
     oSet.name = name
 	oSet.display_name = display_name
     oSet.version = CURRENT_VERSION
 	oSet.options = {}
-
-    oSet.flame_color_hot = create_mode_option(
-		option_type.color,
-		Vec(7.6, 0.6, 0.9),
-		"flame_color_hot",
-		"Hot flame color")
-	oSet.options[#oSet.options + 1] = oSet.flame_color_hot
-
-    oSet.flame_color_cool = create_mode_option(
-		option_type.color,
-		CONSTS.FLAME_COLOR_DEFAULT,
-		"flame_color_cool",
-		"Cool flame color")
-	oSet.options[#oSet.options + 1] = oSet.flame_color_cool
-
-	oSet.physical_damage_factor = create_mode_option(
-		option_type.numeric, 
-		0.0,
-		"physical_damage_factor",
-		"Physical damange modifier")
-	oSet.physical_damage_factor.range.lower = 0
-	oSet.physical_damage_factor.range.upper = 1
-	oSet.physical_damage_factor.step = 0.001
-	oSet.options[#oSet.options + 1] = oSet.physical_damage_factor
-
     return oSet
 end	
-
-function create_booster_option_set()
-	local oSet = create_mode_option_set("booster", "Booster settings")
-
-	oSet.impulse = create_mode_option(
-		option_type.numeric, 
-		0.1,
-		"impulse",
-		"Relative impulse")
-	oSet.impulse.range.lower = 0
-	oSet.impulse.range.upper = 1
-	oSet.impulse.step = 0.001
-	oSet.options[#oSet.options + 1] = oSet.impulse
-
-	oSet.flame_density = create_mode_option(
-		option_type.numeric, 
-		0.2,
-		"flame_density",
-		"Flame density")
-	oSet.flame_density.range.lower = 0
-	oSet.flame_density.range.upper = 1
-	oSet.flame_density.step = 0.001
-	oSet.options[#oSet.options + 1] = oSet.flame_density
-
-	oSet.flame_life = create_mode_option(
-		option_type.numeric, 
-		0.5,
-		"flame_life",
-		"Flame life")
-	oSet.flame_life.range.lower = 0
-	oSet.flame_life.range.upper = 1
-	oSet.flame_life.step = 0.001
-	oSet.options[#oSet.options + 1] = oSet.flame_life
-	return oSet
-end
 
