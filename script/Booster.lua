@@ -25,6 +25,10 @@ PB_.outlines = {}
 PB_.kp = 0
 PB_.ki = 0
 PB_.kd = 0
+PB_.cruise_rotate_time = 0
+PB_.cruise_dir = VecNormalize(Vec(0, -3, -1))
+PB_.rotate_per_sec = 1 / PB_.cruise_rotate_time
+PB_.cruise_rotate_amount = 0 
 
 function PID(pid, set_point, actual)
 	local error = set_point - actual
@@ -118,12 +122,22 @@ end
 function booster_ignition_toggle()
     PB_.power = 0
     PB_.ignition = not PB_.ignition
+    if PB_.ignition then 
+        PB_.cruise_rotate_amount = 0
+        PB_.rotate_per_sec = 1 / PB_.cruise_rotate_time
+    end
 end
 
-function set_gimbal(booster)
+function set_gimbal(booster, dt)
     local q_actual = booster.t_mount.rot
     local x_a, y_a, z_a = GetQuatEuler(q_actual)
-    local x_s, y_s, z_s = GetQuatEuler(booster.q_home)
+    local q_guide = Quat()
+    if PB_.cruise_rotate_time > 0 then 
+        q_guide = QuatSlerp(q_guide, quat_between_vecs(PB_.cruise_dir, booster.v_home), PB_.cruise_rotate_amount)
+    else
+        q_guide = booster.q_home
+    end
+    local x_s, y_s, z_s = GetQuatEuler(q_guide)
     local r_pid = Vec(
         bracket_value(PID(booster.x_pid, x_s, x_a), PB_.gim_lim, -PB_.gim_lim),
         bracket_value(PID(booster.y_pid, y_s, y_a), PB_.gim_lim, -PB_.gim_lim),
@@ -131,10 +145,12 @@ function set_gimbal(booster)
     )
     booster.gimbal = QuatEuler(r_pid[1], r_pid[2], r_pid[3])
     if DEBUG_MODE then 
-        DebugLine(booster.t_mount.pos, VecAdd(booster.t_mount.pos, VecScale(v_actual, 10)), 1, 0, 0)
-        DebugLine(booster.t_mount.pos, VecAdd(booster.t_mount.pos, VecScale(booster.v_home, 10)), 0, 1, 0)
-        DebugLine(booster.t_mount.pos, VecAdd(booster.t_mount.pos, QuatRotateVec(booster.gimbal, Vec(0, 10, 0), 1, 1, 0)))
+        DebugLine(booster.t_mount.pos, VecAdd(booster.t_mount.pos, QuatRotateVec(q_actual, Vec(0, 10, 0))))
+        DebugLine(booster.t_mount.pos, VecAdd(booster.t_mount.pos, QuatRotateVec(q_guide, Vec(0, 10, 0))), 0, 1, 0)
+        DebugLine(booster.t_mount.pos, VecAdd(booster.t_mount.pos, QuatRotateVec(booster.gimbal, Vec(0, 10, 0))), 1, 1, 0)
     end
+
+    PB_.cruise_rotate_amount = math.min(1, PB_.cruise_rotate_amount + (PB_.rotate_per_sec * dt))
 end
 
 function booster_tick(dt)
@@ -152,7 +168,7 @@ function booster_tick(dt)
         booster.t_mount = GetBodyTransform(booster.mount)
         
         if PB_.ignition then
-            set_gimbal(booster)
+            set_gimbal(booster, dt)
             ConstrainOrientation(booster.bell, booster.mount, QuatRotateQuat(booster.gimbal, booster.t_bell.rot), booster.t_mount.rot)    
             PB_.power = math.min(PB_.power + (PB_.ramp * dt), 1)
             TOOL.BOOSTER.pyro.impulse_scale = PB_.impulse * PB_.impulse_const * PB_.power
