@@ -75,18 +75,10 @@ function propagate_point_force(ff, point, dt)
             local coord_prime = round_vec(VecAdd(point.coord, VecScale(trans_dir, ff.extend_scale)))
             local point_prime = field_get(ff.field, coord_prime)
             local trans_mag = point.mag
-            if point_prime ~= nil then 
-                trans_mag = math.min(point.mag, ff.max_force - point_prime.mag)
-            else
-                trans_mag = point.mag
-            end
+            trans_mag = math.min(point.mag, ff.max_force)
             if trans_mag > high_trans_mag then 
                 high_trans_dir = trans_dir
                 high_trans_mag = trans_mag
-            end
-        else 
-            if DEBUG_MODE then 
-                DebugCross(point.pos, 0, 1, 0)
             end
         end
     end
@@ -100,7 +92,7 @@ function propagate_point_force(ff, point, dt)
                 local point_prime = field_get(ff.field, coord_prime)
                 local trans_mag = 0
                 if point_prime ~= nil then 
-                    trans_mag = math.min(point.mag, ff.max_force - point_prime.mag)
+                    trans_mag = math.min(point.mag, ff.max_force)
                     point_prime.mag = point_prime.mag + (trans_mag * (1 - ff.thermo_loss))
                     point.mag = math.max(0, point.mag - trans_mag)
                 else
@@ -115,7 +107,7 @@ function propagate_point_force(ff, point, dt)
     else
         point.mag = point.mag * (1 - ff.thermo_loss)
     end
-    point.power = point.mag / ff.max_force
+    point.power = math.min(1, point.mag / ff.max_force)
 end
 
 function cull_field(ff)
@@ -242,9 +234,14 @@ end
 function debug_color(ff, point)
     -- color code the debug vector line by the proportion 
     -- of maximum force it is. 
-    local r = point.mag / ff.max_force
-    local b = 1 - r
-    return Vec(r, 0, b)
+    local color = nil
+    if point.mag > ff.max_force then 
+        color = Vec(1, 1, 0)
+
+    else
+        color = Vec(point.power, 0, 1 - point.power)
+    end
+        return color
 end
 
 
