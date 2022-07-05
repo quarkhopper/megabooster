@@ -121,12 +121,13 @@ function booster_ignition_toggle()
 end
 
 function set_gimbal(booster)
-    local q_actual = booster.t_mount.rot -- QuatSlerp(booster.t_bell.rot, booster.t_mount.rot, 0.5)
-    local v_actual = QuatRotateVec(q_actual, Vec(0,1,0))
+    local q_actual = booster.t_mount.rot
+    local x_a, y_a, z_a = GetQuatEuler(q_actual)
+    local x_s, y_s, z_s = GetQuatEuler(booster.q_home)
     local r_pid = Vec(
-        -1 * bracket_value(PID(booster.x_pid, booster.v_home[1], v_actual[1]), PB_.gim_lim, -PB_.gim_lim),
-        -1 * bracket_value(PID(booster.y_pid, booster.v_home[2], v_actual[2]), PB_.gim_lim, -PB_.gim_lim),
-        -1 * bracket_value(PID(booster.z_pid, booster.v_home[3], v_actual[3]), PB_.gim_lim, -PB_.gim_lim)
+        bracket_value(PID(booster.x_pid, x_s, x_a), PB_.gim_lim, -PB_.gim_lim),
+        bracket_value(PID(booster.y_pid, y_s, y_a), PB_.gim_lim, -PB_.gim_lim),
+        bracket_value(PID(booster.z_pid, z_s, z_a), PB_.gim_lim, -PB_.gim_lim)
     )
     booster.gimbal = QuatEuler(r_pid[1], r_pid[2], r_pid[3])
     if DEBUG_MODE then 

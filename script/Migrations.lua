@@ -79,7 +79,7 @@ function migrate_option_set(oSet)
         if oSet.gimbal_max_angle == nil then 
             oSet.gimbal_max_angle = create_option(
                 oSet.numeric, 
-                20,
+                10,
                 "gimbal_max_angle",
                 "Gimbal max angle")
             oSet.gimbal_max_angle.range.lower = 0
@@ -89,7 +89,7 @@ function migrate_option_set(oSet)
         if oSet.kp == nil then 
             oSet.kp = create_option(
                 oSet.numeric, 
-                0.8,
+                3,
                 "kp",
                 "Gimbal PID Kp")
             oSet.kp.range.lower = 0
@@ -99,7 +99,7 @@ function migrate_option_set(oSet)
         if oSet.ki == nil then 
             oSet.ki = create_option(
                 oSet.numeric, 
-                0.4,
+                0.001,
                 "ki",
                 "Gimbal PID Ki")
             oSet.ki.range.lower = 0
@@ -109,7 +109,7 @@ function migrate_option_set(oSet)
         if oSet.kd == nil then 
             oSet.kd = create_option(
                 oSet.numeric, 
-                0.1,
+                0.4,
                 "kd",
                 "Gimbal PID Kd")
             oSet.kd.range.lower = 0
