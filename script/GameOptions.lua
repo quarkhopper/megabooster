@@ -41,7 +41,7 @@ function option_set_from_string(ser)
 		local option_ser = option_sers[i]
 		local option = option_from_string(option_ser)
 		options[option.key] = option
-		table.insert(options.options, option)
+		options.options[option.key] = option
 	end
 	return options
 end

@@ -19,6 +19,9 @@ function migrate_option_set(oSet)
         oSet.options["flame_density"] = nil
         oSet.gimbal_strength = nil
         oSet.options["gimbal_strength"] = nil
+        oSet.gimbal_stiffness = nil
+        oSet.options["gimbal_stiffness"] = nil 
+
 
         -- ensure these exist
         if oSet.impulse == nil then 
@@ -30,7 +33,6 @@ function migrate_option_set(oSet)
             oSet.impulse.range.lower = 0
             oSet.impulse.range.upper = 1
             oSet.impulse.step = 0.001
-            oSet.options["impulse"] = oSet.impulse
         end
         if oSet.flame_color_hot == nil then 
             oSet.flame_color_hot = create_option(
@@ -38,15 +40,13 @@ function migrate_option_set(oSet)
                 Vec(7.6, 0.6, 0.9),
                 "flame_color_hot",
                 "Hot flame color")
-            oSet.options["flame_color_hot"] = oSet.flame_color_hot
-        end
+           end
         if oSet.flame_color_cool == nil then 
             oSet.flame_color_cool = create_option(
                 option_type.color,
                 CONSTS.FLAME_COLOR_DEFAULT,
                 "flame_color_cool",
                 "Cool flame color")
-            oSet.options["flame_color_cool"] = oSet.flame_color_cool
         end
         if oSet.real_flames == nil then 
             oSet.real_flames = create_option(
@@ -55,7 +55,6 @@ function migrate_option_set(oSet)
                 "real_flames",
                 "Realistic flames")
             oSet.real_flames.accepted_values = on_off
-            oSet.options["real_flames"] = oSet.real_flames
         end
         if oSet.flame_amount == nil then
             oSet.flame_amount = create_option(
@@ -66,7 +65,6 @@ function migrate_option_set(oSet)
             oSet.flame_amount.range.lower = 0
             oSet.flame_amount.range.upper = 1
             oSet.flame_amount.step = 0.001
-            oSet.options["flame_amount"] = oSet.flame_amount
         end
         if oSet.flame_life == nil then 
             oSet.flame_life = create_option(
@@ -77,7 +75,6 @@ function migrate_option_set(oSet)
             oSet.flame_life.range.lower = 0
             oSet.flame_life.range.upper = 1
             oSet.flame_life.step = 0.001
-            oSet.options["flame_life"] = oSet.flame_life
         end
         if oSet.gimbal_max_angle == nil then 
             oSet.gimbal_max_angle = create_option(
@@ -88,18 +85,54 @@ function migrate_option_set(oSet)
             oSet.gimbal_max_angle.range.lower = 0
             oSet.gimbal_max_angle.range.upper = 60
             oSet.gimbal_max_angle.step = 0.1
-            oSet.options["gimbal_max_angle"] = oSet.gimbal_max_angle
         end
-        if oSet.gimbal_stiffness == nil then 
-            oSet.gimbal_stiffness = create_option(
+        if oSet.kp == nil then 
+            oSet.kp = create_option(
                 oSet.numeric, 
                 0.8,
-                "gimbal_stiffness",
-                "Gimbal stiffness")
-            oSet.gimbal_stiffness.range.lower = 0
-            oSet.gimbal_stiffness.range.upper = 1
-            oSet.gimbal_stiffness.step = 0.001
-            oSet.options["gimbal_stiffness"] = oSet.gimbal_stiffness
+                "kp",
+                "Gimbal PID Kp")
+            oSet.kp.range.lower = 0
+            oSet.kp.range.upper = 5
+            oSet.kp.step = 0.001
+        end
+        if oSet.ki == nil then 
+            oSet.ki = create_option(
+                oSet.numeric, 
+                0.4,
+                "ki",
+                "Gimbal PID Ki")
+            oSet.ki.range.lower = 0
+            oSet.ki.range.upper = 5
+            oSet.ki.step = 0.001
+        end
+        if oSet.kd == nil then 
+            oSet.kd = create_option(
+                oSet.numeric, 
+                0.1,
+                "kd",
+                "Gimbal PID Kd")
+            oSet.kd.range.lower = 0
+            oSet.kd.range.upper = 5
+            oSet.kd.step = 0.001
+        end
+
+        -- order
+        local order = {
+            "impulse", 
+            "kp", 
+            "ki", 
+            "kd", 
+            "gimbal_max_angle", 
+            "real_flames", 
+            "flame_amount", 
+            "flame_life", 
+            "flame_color_hot", 
+            "flame_color_cool"}
+
+        oSet.options = {}
+        for i = 1, #order do
+            table.insert(oSet.options, oSet[order[i]])
         end
     end
     return oSet

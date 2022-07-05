@@ -111,18 +111,16 @@ function draw_option_modal()
 				UiTranslate(200, 220)
 				UiAlign("left top")
 				UiPush()
-					local count = 1
-					for key, option in pairs(page_options.options) do
-						-- local option = page_options.options[i]
+					for i = 1, #page_options.options do
+						local option = page_options.options[i]
 						draw_option(option)
-						if math.fmod(count, 7) == 0 then 
+						if math.fmod(i, 7) == 0 then 
 							UiPop()
 							UiTranslate(UI.OPTION_CONTROL_WIDTH, 0)
 							UiPush()
 						else
 							UiTranslate(0, 100)
 						end
-						count = count + 1
 					end
 				UiPop()
 			UiPop()

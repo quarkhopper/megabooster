@@ -3,6 +3,8 @@
 rumble_sound = LoadLoop("MOD/snd/rumble.ogg")
 fire_sound = LoadLoop("MOD/snd/rocketfire.ogg")
 spawn_sound = LoadSound("MOD/snd/clang.ogg")
+boosters = {}
+debugline = {Vec(), Vec()}
 
 PB_ = {}
 PB_.ignition = false
@@ -15,16 +17,32 @@ PB_.joint_offset = 4.7
 PB_.inj_center = Vec(0, 2, 0)
 PB_.stand_body = nil
 PB_.gim_lim = 30
-PB_.gim_apply = 0.5
 PB_.real_flames = false
 PB_.impulse = 0.5
 PB_.pretty_flame_amount = 0.5
 PB_.outline_time = 0
 PB_.outlines = {}
+PB_.kp = 0
+PB_.ki = 0
+PB_.kd = 0
 
-boosters = {}
+function PID(pid, set_point, actual)
+	local error = set_point - actual
+	local integral = pid.last_i + error
+	local derivative = error - pid.last_e
+		
+	pid.last_e = error
+	pid.last_i = integral
+    return (PB_.kp * error) + (PB_.ki * integral) + (PB_.kd * derivative)
+end
 
-debugline = {Vec(), Vec()}
+function inst_pid(kp, ki, kd)
+    local inst = {}
+    inst.last_e = 0
+    inst.last_i = 0
+    return inst
+end
+
 
 function inst_booster(trans)
     local inst = {}
@@ -34,6 +52,9 @@ function inst_booster(trans)
     inst.v_home = QuatRotateVec(inst.q_home, Vec(0, 1, 0))
     inst.t_mount = QuatEuler(0, 0, 0)
     inst.t_bell = QuatEuler(0, 0, 0)
+    inst.x_pid = inst_pid()
+    inst.y_pid = inst_pid()
+    inst.z_pid = inst_pid()
     inst.gimbal = QuatEuler(0, 0, 0)
     return inst
 end
@@ -100,26 +121,19 @@ function booster_ignition_toggle()
 end
 
 function set_gimbal(booster)
-    if PB_.gim_apply == 0 then 
-        booster.gimbal = QuatEuler(0, 0, 0) 
-        return
-    end
-    local q_heading = QuatSlerp(booster.t_bell.rot, booster.t_mount.rot, 0.5)
-    local v_heading = QuatRotateVec(q_heading, Vec(0,1,0))
-    local q_diff = quat_between_vecs(v_heading, booster.v_home)
-    local dp_diff = VecDot(booster.v_home, v_heading)
-    local error = 1 - ((VecDot(booster.v_home, v_heading) + 1) / 2)
-    local q_gimbal = QuatSlerp(QuatEuler(0, 0, 0), q_diff, PB_.gim_apply)
-    if DEBUG_MODE then 
-        DebugLine(booster.t_mount.pos, VecAdd(booster.t_mount.pos, VecScale(v_heading, 5)), 1, 0, 0)
-        DebugLine(booster.t_mount.pos, VecAdd(booster.t_mount.pos, VecScale(booster.v_home, 5)), 0, 1, 0)
-    end
-    local rot_x,rot_y,rot_z = GetQuatEuler(q_gimbal)
-    booster.gimbal = QuatEuler(
-        math.max(-PB_.gim_lim, math.min(PB_.gim_lim, rot_x)),
-        math.max(-PB_.gim_lim, math.min(PB_.gim_lim, rot_y)),
-        math.max(-PB_.gim_lim, math.min(PB_.gim_lim, rot_z))
+    local q_actual = booster.t_mount.rot -- QuatSlerp(booster.t_bell.rot, booster.t_mount.rot, 0.5)
+    local v_actual = QuatRotateVec(q_actual, Vec(0,1,0))
+    local r_pid = Vec(
+        -1 * bracket_value(PID(booster.x_pid, booster.v_home[1], v_actual[1]), PB_.gim_lim, -PB_.gim_lim),
+        -1 * bracket_value(PID(booster.y_pid, booster.v_home[2], v_actual[2]), PB_.gim_lim, -PB_.gim_lim),
+        -1 * bracket_value(PID(booster.z_pid, booster.v_home[3], v_actual[3]), PB_.gim_lim, -PB_.gim_lim)
     )
+    booster.gimbal = QuatEuler(r_pid[1], r_pid[2], r_pid[3])
+    if DEBUG_MODE then 
+        DebugLine(booster.t_mount.pos, VecAdd(booster.t_mount.pos, VecScale(v_actual, 10)), 1, 0, 0)
+        DebugLine(booster.t_mount.pos, VecAdd(booster.t_mount.pos, VecScale(booster.v_home, 10)), 0, 1, 0)
+        DebugLine(booster.t_mount.pos, VecAdd(booster.t_mount.pos, QuatRotateVec(booster.gimbal, Vec(0, 10, 0), 1, 1, 0)))
+    end
 end
 
 function booster_tick(dt)
@@ -192,22 +206,3 @@ function booster_tick(dt)
         end
     end
 end
-
--- PID_ = {}
--- PID_.last_error = 0
--- PID_.last_integral = 0
--- PID_.kp = 0.3
--- PID_.ki = 0.3
--- PID_.kd = 0.3
--- PID_.error = 0
-
--- function PID(set_point, actual)
--- 	PID_.error = set_point - actual
--- 	PID_.integral = PID_.last_integral + PID_.error
--- 	PID_.derivative = PID_.error - PID_.last_error	
-		
--- 	PID_.last_error = PID_.error
--- 	PID_.last_integral = PID_.integral
-	
---     return PID_.kp * PID_.error + PID_.ki * PID_.integral + PID_.kd * PID_.derivative
--- end

@@ -15,10 +15,11 @@ end
 function load_option_sets()
 	TOOL.GENERAL = load_option_set("general", true)
     PYRO.RAINBOW_MODE = TOOL.GENERAL.rainbow_mode.value == on_off.on
-
 	TOOL.BOOSTER = load_option_set("booster", true)
     PB_.gim_lim = TOOL.BOOSTER.gimbal_max_angle.value
-    PB_.gim_apply = fraction_to_range_value(TOOL.BOOSTER.gimbal_stiffness.value, 5, 0)
+    PB_.kp = TOOL.BOOSTER.kp.value
+    PB_.ki = TOOL.BOOSTER.ki.value
+    PB_.kd = TOOL.BOOSTER.kd.value
     PB_.real_flames = TOOL.BOOSTER.real_flames.value == on_off.on
     PB_.impulse = TOOL.BOOSTER.impulse.value
     init_pyro(TOOL.BOOSTER)
