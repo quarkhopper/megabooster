@@ -150,9 +150,10 @@ function booster_tick(dt)
         local booster = boosters[b]
         booster.t_bell = GetBodyTransform(booster.bell)
         booster.t_mount = GetBodyTransform(booster.mount)
-        set_gimbal(booster)
-        ConstrainOrientation(booster.bell, booster.mount, QuatRotateQuat(booster.gimbal, booster.t_bell.rot), booster.t_mount.rot)
+        
         if PB_.ignition then
+            set_gimbal(booster)
+            ConstrainOrientation(booster.bell, booster.mount, QuatRotateQuat(booster.gimbal, booster.t_bell.rot), booster.t_mount.rot)    
             PB_.power = math.min(PB_.power + (PB_.ramp * dt), 1)
             TOOL.BOOSTER.pyro.impulse_scale = PB_.impulse * PB_.impulse_const * PB_.power
             local booster_trans = GetBodyTransform(booster.bell)
@@ -203,6 +204,7 @@ function booster_tick(dt)
             PlayLoop(fire_sound, booster_trans.pos, 10)
             PlayLoop(rumble_sound, booster_trans.pos, 10)
         else
+            ConstrainOrientation(booster.bell, booster.mount, booster.t_bell.rot, booster.t_mount.rot)    
             PB_.power = 0
         end
     end
