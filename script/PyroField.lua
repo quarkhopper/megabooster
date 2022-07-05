@@ -102,7 +102,10 @@ function make_flame_effect(pyro, flame, dt)
     -- Apply a little random jitter if specified by the options, for the specified lifetime
     -- in options.
     SpawnParticle(VecAdd(flame.pos, random_vec(pyro.flame_jitter)), Vec(), pyro.flame_puff_life)
-
+    local hit, point, normal, shape = QueryClosestPoint(flame.pos, 2)
+    if hit then 
+        Paint(point, random_float(0.2, 0.8), "explosion", random_float(0.2, 1))
+    end
     -- if black smoke amount is set above 0, we're not in ember mode, and chance favors it...
     if math.random() < pyro.smoke_amount_n then
         -- Set up a smoke puff

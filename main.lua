@@ -307,6 +307,8 @@ function update(dt)
 
 		if PB_.real_flames then 
 			flame_tick(TOOL.BOOSTER.pyro, dt)
+		else
+			reset_ff(TOOL.BOOSTER.pyro.ff)
 		end
 		booster_tick(dt)
 	end
