@@ -5,30 +5,35 @@ fire_sound = LoadLoop("MOD/snd/rocketfire.ogg")
 spawn_sound = LoadSound("MOD/snd/clang.ogg")
 boosters = {}
 debugline = {Vec(), Vec()}
+nav_mode = enum {
+    "fly", -- orient to point at target, constant impulse
+    "hover", -- orient to point above target, constant rate of ascent/descent
+    "att" -- orient to home attitude
+}
+waypoints = {}
+
 
 PB_ = {}
-PB_.ignition = false
 PB_.injection_count = 100
 PB_.burn_radius = 0.5
-PB_.power = 0
-PB_.ramp = 1 -- time to full power\
 PB_.impulse_const = 100 
-PB_.joint_offset = 4.7
+PB_.att_impulse = 0
+PB_.joint_offset = 4.7 -- from bottom of bell
 PB_.inj_center = Vec(0, 2, 0)
 PB_.stand_body = nil
 PB_.gim_lim = 30
 PB_.real_flames = false
-PB_.impulse = 0.5
 PB_.pretty_flame_amount = 0.5
 PB_.outline_time = 0
 PB_.outlines = {}
-PB_.kp = 0
-PB_.ki = 0
-PB_.kd = 0
-PB_.cruise_rotate_time = 0
-PB_.cruise_dir = VecNormalize(Vec(0, -3, -1))
-PB_.rotate_per_sec = 1 / PB_.cruise_rotate_time
-PB_.cruise_rotate_amount = 0 
+PB_.gimb_kp = 3
+PB_.gimb_ki = 0.001
+PB_.gimb_kd = 0.4
+PB_.imp_kp = 3
+PB_.imp_ki = 0.001
+PB_.imp_kd = 0.4
+PB_.max_vel_adj = 1
+
 
 function PID(pid, set_point, actual)
 	local error = set_point - actual
@@ -37,16 +42,28 @@ function PID(pid, set_point, actual)
 		
 	pid.last_e = error
 	pid.last_i = integral
-    return (PB_.kp * error) + (PB_.ki * integral) + (PB_.kd * derivative)
+    return (pid.kp * error) + (pid.ki * integral) + (pid.kd * derivative)
 end
 
 function inst_pid(kp, ki, kd)
     local inst = {}
     inst.last_e = 0
     inst.last_i = 0
+    inst.kp = kp
+    inst.ki = ki
+    inst.kd = kd
     return inst
 end
 
+function inst_waypoint(pos, nav_mode, degree, rad, shutdown)
+    local inst = {}
+    inst.pos = pos
+    inst.shutdown = shutdown
+    inst.nav_mode = nav_mode
+    inst.degree = degree
+    inst.rad = rad or 10
+    return inst
+end
 
 function inst_booster(trans)
     local inst = {}
@@ -54,13 +71,41 @@ function inst_booster(trans)
     inst.bell = Spawn("MOD/prefab/pyro_booster_bell.xml", trans, false, true)[1]
     inst.q_home = trans.rot
     inst.v_home = QuatRotateVec(inst.q_home, Vec(0, 1, 0))
+    inst.p_home = trans.pos
     inst.t_mount = QuatEuler(0, 0, 0)
     inst.t_bell = QuatEuler(0, 0, 0)
-    inst.x_pid = inst_pid()
-    inst.y_pid = inst_pid()
-    inst.z_pid = inst_pid()
+    inst.gimb_kp = PB_.gimb_kp
+    inst.gimb_ki = PB_.gimb_ki
+    inst.gimb_kd = PB_.gimb_kd
+    inst.imp_kp = PB_.imp_kp
+    inst.imp_ki = PB_.imp_ki
+    inst.imp_kd = PB_.imp_kd
+    inst.x_pid = inst_pid(inst.gimb_kp, inst.gimb_ki, inst.gimb_kd) -- x gimbal
+    inst.y_pid = inst_pid(inst.gimb_kp, inst.gimb_ki, inst.gimb_kd) -- y gimbal
+    inst.z_pid = inst_pid(inst.gimb_kp, inst.gimb_ki, inst.gimb_kd) -- z gimbal
+    inst.i_pid = inst_pid(inst.imp_kp, inst.imp_ki, inst.imp_kd) -- impulse
     inst.gimbal = QuatEuler(0, 0, 0)
+    inst.impulse = PB_.att_impulse
+    inst.nav_mode = nav_mode.att
+    inst.waypoints = {}
+    inst.waypoint_i = 0
+    inst.waypoint = nil        
+    inst.ignition = false
+
     return inst
+end
+
+function next_waypoint(booster)
+    booster.waypoint_i = booster.waypoint_i + 1
+    if booster.waypoint_i > #booster.waypoints then booster.waypoint_i = 1 end
+    booster.waypoint = booster.waypoints[booster.waypoint_i]
+    booster.nav_mode = booster.waypoint.nav_mode
+end
+
+function set_booster_waypoints(booster, waypoints)
+    booster.waypoints = waypoints
+    booster.waypoint_i = 0
+    next_waypoint(booster)
 end
 
 function delete_booster_bodies(booster)
@@ -74,7 +119,6 @@ function clear_boosters()
 		delete_booster_bodies(boosters[i])
 	end
 	boosters = {}
-    PB_.ignition = false
 end
 
 function reattach_boosters()
@@ -108,9 +152,16 @@ function spawn_booster()
             trans = Transform(spawn_point, spawn_quat)
         else
 		    trans = Transform(hit_point, QuatEuler(0,0,0))
-            PB_.host_body = nil
         end
         local booster = inst_booster(trans)
+-- TEST 
+        -- local waypoints = {
+        --     inst_waypoint(Vec(0, 50, 0), nav_mode.hover, 1, 10, false),
+        --     inst_waypoint(Vec(0, 20, 0), nav_mode.hover, 1, 10, false),
+        --     inst_waypoint(Vec(0, 0, 0), nav_mode.hover, 1, 1, true)
+        -- } 
+        -- set_booster_waypoints(booster, waypoints)
+-- END TEST
         table.insert(boosters, booster)
         PlaySound(spawn_sound,trans.pos, 10)
         table.insert(PB_.outlines, booster.mount)
@@ -120,23 +171,41 @@ function spawn_booster()
 end
 
 function booster_ignition_toggle()
-    PB_.power = 0
-    PB_.ignition = not PB_.ignition
-    if PB_.ignition then 
-        PB_.cruise_rotate_amount = 0
-        PB_.rotate_per_sec = 1 / PB_.cruise_rotate_time
+    for i = 1, #boosters do
+        local booster = boosters[i]
+        booster.ignition = not booster.ignition
     end
 end
 
-function set_gimbal(booster, dt)
+function update_control(booster, dt)
+    if not booster.ignition then return end -- don't bother doing anything
     local q_actual = booster.t_mount.rot
+    local v_actual = QuatRotateVec(q_actual, Vec(0, 1, 0))
     local x_a, y_a, z_a = GetQuatEuler(q_actual)
     local q_guide = Quat()
-    if PB_.cruise_rotate_time > 0 then 
-        q_guide = QuatSlerp(q_guide, quat_between_vecs(PB_.cruise_dir, booster.v_home), PB_.cruise_rotate_amount)
-    else
+
+    -- set guide attitude
+    if booster.nav_mode == nav_mode.att then 
+        -- keep the target attitude the home attitude, no target vector
         q_guide = booster.q_home
+    elseif booster.nav_mode == nav_mode.fly or booster.nav_mode == nav_mode.hover then 
+        booster.nav_mode = booster.waypoint.nav_mode
+        local p_target = Vec()
+        if booster.nav_mode == nav_mode.fly then 
+            p_target = booster.waypoint.pos -- fly right at the waypoint
+        elseif booster.nav_mode == nav_mode.hover then
+            p_target = VecAdd(booster.waypoint.pos, Vec(0, booster.t_mount.pos[2] + 10, 0)) -- "hanging" from a 10 unit string above the target
+        end
+        local v_target = VecNormalize(VecSub(p_target, booster.t_mount.pos))
+        q_guide = quat_between_vecs(v_actual, v_target)
+        if VecLength(VecSub(booster.waypoint.pos, booster.t_mount.pos)) <= booster.waypoint.rad then 
+            booster.ignition = not booster.waypoint.shutdown
+            next_waypoint(booster)
+        end 
     end
+    if not booster.ignition then return end -- in case we've just shut down
+
+    -- gimble converge on guide attitude
     local x_s, y_s, z_s = GetQuatEuler(q_guide)
     local r_pid = Vec(
         bracket_value(PID(booster.x_pid, x_s, x_a), PB_.gim_lim, -PB_.gim_lim),
@@ -144,13 +213,33 @@ function set_gimbal(booster, dt)
         bracket_value(PID(booster.z_pid, z_s, z_a), PB_.gim_lim, -PB_.gim_lim)
     )
     booster.gimbal = QuatEuler(r_pid[1], r_pid[2], r_pid[3])
+
+    -- impulse converge on 0 delta v
+    if booster.nav_mode == nav_mode.hover then 
+        -- constant asc/desc 
+        local sign = 1
+        if booster.t_mount.pos[2] > booster.waypoint.pos[2] then sign = -1 end
+        local vel = GetBodyVelocity(booster.mount)
+        local vel_set = (booster.waypoint.degree * sign)
+        local vel_pid = PID(booster.i_pid, vel_set, vel[2])
+        local scale = vel_pid / (vel_pid - vel[2])
+        booster.impulse = bracket_value(scale, 0.08, 0)
+        -- DebugPrint("wp: "..tostring(booster.waypoint_i)..", s: "..tostring(vel_set)..", a: "..tostring(vel[2])..", vel_pid: "..tostring(vel_pid)..", impulse: "..tostring(booster.impulse))
+    elseif booster.nav_mode == nav_mode.fly then
+        -- constant impulse 
+        booster.impulse = booster.waypoint.degree
+    end -- if nav_mode is att then don't change the set impulse
+
     if DEBUG_MODE then 
         DebugLine(booster.t_mount.pos, VecAdd(booster.t_mount.pos, QuatRotateVec(q_actual, Vec(0, 10, 0))))
         DebugLine(booster.t_mount.pos, VecAdd(booster.t_mount.pos, QuatRotateVec(q_guide, Vec(0, 10, 0))), 0, 1, 0)
         DebugLine(booster.t_mount.pos, VecAdd(booster.t_mount.pos, QuatRotateVec(booster.gimbal, Vec(0, 10, 0))), 1, 1, 0)
+        for w = 1, #booster.waypoints do
+            local waypoint = booster.waypoints[w]
+            draw_waypoint(waypoint)
+        end
+        DebugPrint(tostring(booster.impulse))
     end
-
-    PB_.cruise_rotate_amount = math.min(1, PB_.cruise_rotate_amount + (PB_.rotate_per_sec * dt))
 end
 
 function booster_tick(dt)
@@ -166,18 +255,15 @@ function booster_tick(dt)
         local booster = boosters[b]
         booster.t_bell = GetBodyTransform(booster.bell)
         booster.t_mount = GetBodyTransform(booster.mount)
-        
-        if PB_.ignition then
-            set_gimbal(booster, dt)
+        if booster.ignition then
+            update_control(booster, dt)
             ConstrainOrientation(booster.bell, booster.mount, QuatRotateQuat(booster.gimbal, booster.t_bell.rot), booster.t_mount.rot)    
-            PB_.power = math.min(PB_.power + (PB_.ramp * dt), 1)
-            TOOL.BOOSTER.pyro.impulse_scale = PB_.impulse * PB_.impulse_const * PB_.power
             local booster_trans = GetBodyTransform(booster.bell)
             local l_inj_center = PB_.inj_center
             local w_inj_center = TransformToParentPoint(booster_trans, l_inj_center)
             local total_thrust = 0
-            local magnitude = TOOL.BOOSTER.pyro.ff.max_force / 2
-            local force_mag = magnitude * TOOL.BOOSTER.pyro.impulse_scale
+            local magnitude = TOOL.BOOSTER.pyro.ff.max_force * booster.impulse
+            local force_mag = magnitude * booster.impulse * PB_.impulse_const
             local pretty_color = blend_color(math.random(), 
                 HSVToRGB(TOOL.BOOSTER.pyro.color_hot), 
                 HSVToRGB(TOOL.BOOSTER.pyro.color_cool))
@@ -220,8 +306,30 @@ function booster_tick(dt)
             PlayLoop(fire_sound, booster_trans.pos, 10)
             PlayLoop(rumble_sound, booster_trans.pos, 10)
         else
+            -- when not ignition, just straighten out the gimble
             ConstrainOrientation(booster.bell, booster.mount, booster.t_bell.rot, booster.t_mount.rot)    
-            PB_.power = 0
         end
     end
+end
+
+function draw_waypoint(waypoint)
+    DebugCross(waypoint.pos)
+    local t = Transform(waypoint.pos, QuatEuler(0,0,0))
+    draw_square(t, waypoint.rad, 1, 0, 0)
+    t = Transform(waypoint.pos, QuatEuler(90,0,0))
+    draw_square(t, waypoint.rad, 0, 1, 0)
+    t = Transform(waypoint.pos, QuatEuler(0,0,90))
+    draw_square(t, waypoint.rad, 0, 0, 1)
+end
+
+function draw_square(trans, size, r, g, b)
+    local half = size / 2
+    local ca = TransformToParentPoint(trans, Vec(-half, 0, -half))
+    local cb = TransformToParentPoint(trans, Vec(half, 0, -half))
+    local cc = TransformToParentPoint(trans, Vec(half, 0, half))
+    local cd = TransformToParentPoint(trans, Vec(-half, 0, half))
+    DebugLine(ca, cb, r, g, b)
+    DebugLine(cb, cc, r, g, b)
+    DebugLine(cc, cd, r, g, b)
+    DebugLine(cd, ca, r, g, b)
 end
