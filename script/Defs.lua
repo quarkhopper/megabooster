@@ -33,7 +33,7 @@ end
 KEY = {}
 KEY.DEBUG = setup_keybind("Debug mode", "debug mode", "F11")
 KEY.IGNITION = setup_keybind("Ignition toggle", "ignition", "I")
-KEY.REATTACH = setup_keybind("Reattach boosters", "reattach", "M")
+KEY.REATTACH = setup_keybind("Magnetize boosters", "reattach", "M")
 KEY.CLEAR = setup_keybind("Clear boosters", "clear", "C")
 KEY.OPTIONS = setup_keybind("Options", "options", "O")
 

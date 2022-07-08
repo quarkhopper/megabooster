@@ -81,6 +81,25 @@ function quat_between_vecs(v1, v2)
     return Quat(a[1], a[2], a[3], w)
 end
 
+function limit_quat(quat, angle)
+    local x, y, z = GetQuatEuler(quat)
+    return QuatEuler(
+        bracket_value(x, angle, -angle),
+        bracket_value(y, angle, -angle),
+        bracket_value(z, angle, -angle)
+    )
+end
+
+function quat_add(q1, q2)
+    local x1, y1, z1 = GetQuatEuler(q1)
+    local x2, y2, z2 = GetQuatEuler(q2)
+    return QuatEuler(
+        x1 + x2, 
+        y1 + y2,
+        z1 + z2
+    )
+end
+
 function reflection_vector(vec, normal)
 	local u = VecScale((VecDot(vec, normal) / VecDot(normal, normal)), normal)
 	local w = VecSub(vec, u)

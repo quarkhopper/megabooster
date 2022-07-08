@@ -22,22 +22,23 @@ PB_ = {}
 PB_.injection_count = 100
 PB_.burn_radius = 0.5
 PB_.impulse_const = 100 
+PB_.impulse_hover_min = 0.05
 PB_.att_impulse = 0
 PB_.joint_offset = 4.7 -- from bottom of bell
 PB_.inj_center = Vec(0, 2, 0)
 PB_.stand_body = nil
-PB_.gim_lim = 30
-PB_.lat_gim_component = 0.1
+PB_.gim_lim = 10
+PB_.lat_gim_lim = 6
 PB_.real_flames = false
 PB_.pretty_flame_amount = 0.5
 PB_.outline_time = 0
 PB_.outlines = {}
 PB_.gimb_kp = 3
 PB_.gimb_ki = 0.001
-PB_.gimb_kd = 0.4
-PB_.imp_kp = 0.4
-PB_.imp_ki = 0.1
-PB_.imp_kd = 0.2
+PB_.gimb_kd = 0.1
+PB_.imp_kp = 0.5
+PB_.imp_ki = 0.001
+PB_.imp_kd = 0.1
 PB_.max_vel_adj = 1
 
 
@@ -86,9 +87,11 @@ function inst_booster(trans)
     inst.imp_kp = PB_.imp_kp
     inst.imp_ki = PB_.imp_ki
     inst.imp_kd = PB_.imp_kd
-    inst.x_pid = inst_pid(inst.gimb_kp, inst.gimb_ki, inst.gimb_kd) -- x gimbal
-    inst.y_pid = inst_pid(inst.gimb_kp, inst.gimb_ki, inst.gimb_kd) -- y gimbal
-    inst.z_pid = inst_pid(inst.gimb_kp, inst.gimb_ki, inst.gimb_kd) -- z gimbal
+    inst.att_x_pid = inst_pid(inst.gimb_kp, inst.gimb_ki, inst.gimb_kd) -- x gimbal
+    inst.att_y_pid = inst_pid(inst.gimb_kp, inst.gimb_ki, inst.gimb_kd) -- y gimbal
+    inst.att_z_pid = inst_pid(inst.gimb_kp, inst.gimb_ki, inst.gimb_kd) -- z gimbal
+    inst.lat_x_pid = inst_pid(inst.gimb_kp, inst.gimb_ki, inst.gimb_kd) -- lateral motion x
+    inst.lat_z_pid = inst_pid(inst.gimb_kp, inst.gimb_ki, inst.gimb_kd) -- lateral motion z
     inst.i_pid = inst_pid(inst.imp_kp, inst.imp_ki, inst.imp_kd) -- impulse
     inst.gimbal = QuatEuler(0, 0, 0)
     inst.impulse = PB_.att_impulse
@@ -127,7 +130,7 @@ function clear_boosters()
 	boosters = {}
 end
 
-function reattach_boosters()
+function magnetize_boosters()
     for i = 1, #boosters do
         local booster = boosters[i]
         local t_mount = GetBodyTransform(booster.mount)
@@ -162,9 +165,10 @@ function spawn_booster()
         local booster = inst_booster(trans)
 -- TEST 
         local waypoints = {
-            -- inst_waypoint(Vec(0, 50, 0), nav_mode.hover, 2, 10, end_state.next),
-            inst_waypoint(Vec(0, 20, 0), nav_mode.hover, 2, 10, end_state.hover),
-            inst_waypoint(Vec(0, 0, 0), nav_mode.hover, 2, 1, end_state.shutdown)
+            inst_waypoint(Vec(10, 200, 0), nav_mode.hover, 10, 10, end_state.next),
+            inst_waypoint(Vec(0, 100, 0), nav_mode.hover, 5, 10, end_state.next),
+            inst_waypoint(Vec(0, 50, 0), nav_mode.hover, 1, 10, end_state.next),
+            inst_waypoint(Vec(0, PB_.joint_offset, 0), nav_mode.hover, 0.5, 3, end_state.shutdown)
         } 
         set_booster_waypoints(booster, waypoints)
 -- END TEST
@@ -185,15 +189,17 @@ end
 
 function update_control(booster, dt)
     if not booster.ignition then return end -- don't bother doing anything
+    local mount_top = VecAdd(booster.t_mount.pos, Vec(0, PB_.joint_offset, 0))
     local q_actual = booster.t_mount.rot
     local v_actual = QuatRotateVec(q_actual, Vec(0, 1, 0))
     local x_a, y_a, z_a = GetQuatEuler(q_actual)
-    local q_target_att = Quat()
+    local vel = GetBodyVelocity(booster.mount)
+    local q_to_target = Quat()
 
     -- set guide attitude
     if booster.nav_mode == nav_mode.att then 
         -- keep the target attitude the home attitude, no target vector
-        q_target_att = booster.q_home
+        q_to_target = booster.q_home
     elseif booster.nav_mode == nav_mode.fly or booster.nav_mode == nav_mode.hover then 
         -- waypoint goverened flight
         booster.nav_mode = booster.waypoint.nav_mode
@@ -201,14 +207,19 @@ function update_control(booster, dt)
             -- fly right at the waypoint
             local p_target = booster.waypoint.pos 
             local v_target = VecNormalize(VecSub(p_target, booster.t_mount.pos))
-            q_target_att = quat_between_vecs(v_actual, v_target)
+            q_to_target = quat_between_vecs(v_actual, v_target)
         elseif booster.nav_mode == nav_mode.hover then
             -- orient straight up
-            q_target_att = Vec(0, 1, 0)
+            q_to_target = quat_between_vecs(v_actual, Vec(0, 1, 0))
             -- adjust gimbal for lateral correction
-            -- local lat_target = VecAdd(booster.waypoint.pos, Vec(0, booster.t_mount.pos[2] + 10, 0))
-            -- local q_lat = quat_between_vecs(VecNormalize(VecSub(lat_target, booster.t_mount.pos)), Vec(0, 1, 0))
-            -- q_target_att = QuatSlerp(q_target_att, q_lat, -PB_.lat_gim_component) 
+            local lat_target = VecAdd(booster.waypoint.pos, Vec(0, mount_top[2] + 10, 0))
+            local lat_delta = VecSub(lat_target, mount_top)
+            local lat_x_pid = PID(booster.lat_x_pid, 0, lat_delta[1])
+            local lat_z_pid = PID(booster.lat_z_pid, 0, lat_delta[3])
+            local v_lat = VecNormalize(Vec(lat_x_pid, lat_target[2], lat_z_pid))
+            local q_lat = quat_between_vecs(v_lat, Vec(0, 1, 0))
+            local q_lat = limit_quat(q_lat, PB_.lat_gim_lim)
+            q_to_target = quat_add(q_to_target, q_lat)
         end
         if VecLength(VecSub(booster.waypoint.pos, booster.t_mount.pos)) <= booster.waypoint.rad then 
             -- arrived at the waypoint
@@ -217,37 +228,38 @@ function update_control(booster, dt)
             elseif booster.waypoint.end_state == end_state.next then
                 next_waypoint(booster)
             elseif booster.waypoint.end_state == end_state.hover then
-                -- do nothing
+                -- do nothing to change attitude
             end
         end 
     end
     if not booster.ignition then return end -- in case we've just shut down
     -- gimble converge on guide attitude
-    local x_s, y_s, z_s = GetQuatEuler(q_target_att)
+    local x_s, y_s, z_s = GetQuatEuler(q_to_target)
     booster.gimbal = QuatEuler(
-        bracket_value(PID(booster.x_pid, x_s, x_a), PB_.gim_lim, -PB_.gim_lim),
-        bracket_value(PID(booster.y_pid, y_s, y_a), PB_.gim_lim, -PB_.gim_lim),
-        bracket_value(PID(booster.z_pid, z_s, z_a), PB_.gim_lim, -PB_.gim_lim)
+        bracket_value(PID(booster.att_x_pid, x_s, x_a), PB_.gim_lim, -PB_.gim_lim),
+        bracket_value(PID(booster.att_y_pid, y_s, y_a), PB_.gim_lim, -PB_.gim_lim),
+        bracket_value(PID(booster.att_z_pid, z_s, z_a), PB_.gim_lim, -PB_.gim_lim)
     )    
 
-    -- impulse converge on 0 delta v
+    -- impulse adjust to converge on waypoint
     if booster.nav_mode == nav_mode.hover then 
         -- constant asc/desc 
         local sign = 1
-        if booster.t_mount.pos[2] > booster.waypoint.pos[2] then sign = -1 end
-        local vel = GetBodyVelocity(booster.mount)
+        if mount_top[2] > booster.waypoint.pos[2] then sign = -1 end
         local vel_set = (booster.waypoint.degree * sign)
-        local vel_pid = PID(booster.i_pid, vel_set, vel[2])
-        -- convert velocity to impulse
-        booster.impulse = bracket_value(vel_pid / 100, 0.5, 0)
+        local vel_diff = vel[2] - vel_set
+        local i_pid = PID(booster.i_pid, 0, vel_diff) / 100
+        booster.impulse = bracket_value(booster.impulse + i_pid, PB_.att_impulse, PB_.impulse_hover_min)
     elseif booster.nav_mode == nav_mode.fly then
         -- constant impulse 
         booster.impulse = booster.waypoint.degree
-    end -- if nav_mode is att then don't change the set impulse
+    else
+        booster.impulse = PB_.att_impulse
+    end
 
     if DEBUG_MODE then 
         DebugLine(booster.t_mount.pos, VecAdd(booster.t_mount.pos, QuatRotateVec(q_actual, Vec(0, 10, 0))))
-        DebugLine(booster.t_mount.pos, VecAdd(booster.t_mount.pos, QuatRotateVec(q_target_att, Vec(0, 10, 0))), 0, 1, 0)
+        DebugLine(booster.t_mount.pos, VecAdd(booster.t_mount.pos, QuatRotateVec(q_to_target, Vec(0, 10, 0))), 0, 1, 0)
         DebugLine(booster.t_mount.pos, VecAdd(booster.t_mount.pos, QuatRotateVec(booster.gimbal, Vec(0, 10, 0))), 1, 1, 0)
         for w = 1, #booster.waypoints do
             local waypoint = booster.waypoints[w]
@@ -305,9 +317,12 @@ function booster_tick(dt)
                             SpawnParticle(w_inj_center, VecScale(l_inj_dir, 10), 0.2)
                     end
                 end
-
+            end
+            local center_dir = TransformToParentVec(booster_trans, Vec(0, 1, 0))
+            local force_dirs = radiate(center_dir, 60, PB_.injection_count, math.random() * 360)
+            for d = 1, #force_dirs do
                 -- push on the booster bell the opposite way
-                local force_dir = VecScale(w_inj_dir, -1)
+                local force_dir = force_dirs[d]
                 local force_vec = VecScale(force_dir, force_mag)
                 ApplyBodyImpulse(booster.bell, w_inj_center, force_vec)
             end

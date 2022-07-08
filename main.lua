@@ -59,7 +59,7 @@ function draw(dt)
 		UiText("Left click to place booster", true)
 		UiText(KEY.CLEAR.key.." to clear all boosters", true)
 		UiText(KEY.IGNITION.key.." for ignition toggle", true)
-		UiText(KEY.REATTACH.key.." to reattach boosters at mounts", true)
+		UiText(KEY.REATTACH.key.." to magnetize booster mounts to objects", true)
 		UiText(KEY.OPTIONS.key.." for booster options", true)
 		UiText(KEY.DEBUG.key.." for physics debug")
 	UiPop()
@@ -354,11 +354,11 @@ function handle_input(dt)
 					end
 				end
 			
-				-- reattach thrusters
+				-- magnetize boosters
 				reattach_key_wait = math.min(reattach_key_wait + dt, 0.5)
 				if InputDown(KEY.REATTACH.key) then 
 					if reattach_key_wait == 0.5 then 
-						reattach_boosters()
+						magnetize_boosters()
 					end	
 					reattach_key_wait = 0
 				end
