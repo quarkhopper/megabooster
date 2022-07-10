@@ -3,19 +3,12 @@
 rumble_sound = LoadLoop("MOD/snd/rumble.ogg")
 fire_sound = LoadLoop("MOD/snd/rocketfire.ogg")
 spawn_sound = LoadSound("MOD/snd/clang.ogg")
-boosters = {}
 debugline = {Vec(), Vec()}
-nav_mode = enum {
-    "fly", -- orient to point at target, constant impulse
-    "hover", -- orient to point above target, constant rate of ascent/descent
-    "att" -- orient to home attitude
-}
+
 PB_ = {}
-PB_.selected_booster = nil
-PB_.edit_wp = nil
-PB_.edit_wp_dist = 10
-PB_.edit_wp_rad = 1
-PB_.editing_wp = false
+PB_.boosters = {}
+PB_.wp_cursor = nil
+PB_.wp_cursor_on = false
 PB_.injection_count = 100
 PB_.burn_radius = 0.5
 PB_.impulse_const = 100 
@@ -24,19 +17,15 @@ PB_.max_impulse = 0
 PB_.joint_offset = 4.7 -- from bottom of bell
 PB_.inj_center = Vec(0, 2, 0)
 PB_.stand_body = nil
-PB_.gim_lim = 10
-PB_.lat_gim_lim = 6
+PB_.att_gim_lim = 10
+PB_.hover_velocity = 0.5
 PB_.real_flames = false
 PB_.pretty_flame_amount = 0.5
 PB_.outline_time = 0
 PB_.outlines = {}
-PB_.gimb_kp = 3
-PB_.gimb_ki = 0.001
-PB_.gimb_kd = 0.1
-PB_.imp_kp = 0.5
-PB_.imp_ki = 0.001
-PB_.imp_kd = 0.1
-PB_.max_vel_adj = 1
+PB_.gimb_att_kp = 3
+PB_.gimb_att_ki = 0.001
+PB_.gimb_att_kd = 0.4
 
 
 function PID(pid, set_point, actual)
@@ -81,21 +70,11 @@ function inst_booster(trans)
     inst.p_home = trans.pos
     inst.t_mount = QuatEuler(0, 0, 0)
     inst.t_bell = QuatEuler(0, 0, 0)
-    inst.gimb_kp = PB_.gimb_kp
-    inst.gimb_ki = PB_.gimb_ki
-    inst.gimb_kd = PB_.gimb_kd
-    inst.imp_kp = PB_.imp_kp
-    inst.imp_ki = PB_.imp_ki
-    inst.imp_kd = PB_.imp_kd
-    inst.att_x_pid = inst_pid(inst.gimb_kp, inst.gimb_ki, inst.gimb_kd) -- x gimbal
-    inst.att_y_pid = inst_pid(inst.gimb_kp, inst.gimb_ki, inst.gimb_kd) -- y gimbal
-    inst.att_z_pid = inst_pid(inst.gimb_kp, inst.gimb_ki, inst.gimb_kd) -- z gimbal
-    inst.lat_x_pid = inst_pid(inst.gimb_kp, inst.gimb_ki, inst.gimb_kd) -- lateral motion x
-    inst.lat_z_pid = inst_pid(inst.gimb_kp, inst.gimb_ki, inst.gimb_kd) -- lateral motion z
-    inst.i_pid = inst_pid(inst.imp_kp, inst.imp_ki, inst.imp_kd) -- impulse
+    inst.att_x_pid = inst_pid(PB_.gimb_att_kp, PB_.gimb_att_ki, PB_.gimb_att_kd)
+    inst.att_y_pid = inst_pid(PB_.gimb_att_kp, PB_.gimb_att_ki, PB_.gimb_att_kd)
+    inst.att_z_pid = inst_pid(PB_.gimb_att_kp, PB_.gimb_att_ki, PB_.gimb_att_kd)
     inst.gimbal = QuatEuler(0, 0, 0)
     inst.impulse = PB_.max_impulse
-    inst.nav_mode = nav_mode.hover
     inst.waypoint = nil        
     inst.ignition = false
 
@@ -109,15 +88,15 @@ end
 
 function clear_boosters()
 	reset_ff(TOOL.BOOSTER.pyro.ff)
-	for i = 1, #boosters do
-		delete_booster_bodies(boosters[i])
+	for i = 1, #PB_.boosters do
+		delete_booster_bodies(PB_.boosters[i])
 	end
-	boosters = {}
+	PB_.boosters = {}
 end
 
 function magnetize_boosters()
-    for i = 1, #boosters do
-        local booster = boosters[i]
+    for i = 1, #PB_.boosters do
+        local booster = PB_.boosters[i]
         local t_mount = GetBodyTransform(booster.mount)
         local t_bell = GetBodyTransform(booster.bell)
         Delete(booster.mount)
@@ -135,52 +114,40 @@ function magnetize_boosters()
     end
 end
 
-function spawn_or_select_booster()
+function spawn_booster()
     local hit_point, normal, shape = get_shoot_hit(100)
 	if hit_point then
         local hit_body = GetShapeBody(shape)
         local trans = nil
-        local booster_selected = nil
-        for i = 1, #booster do
-            local booster = boosters[i]
-            if hit_body == booster.mount or hit_body == booster.bell then 
-                booster_selected = booster
-                break
-            end
-        end
-        if booster_selected ~= nil then
-            PB_.selected_booster = booster_selected
-            PlaySound(spawn_sound, booster_selected.t_bell.pos, 10)
-            table.insert(PB_.outlines, booster_selected.mount)
-            table.insert(PB_.outlines, booster_selected.bell) 
-            PB_.outline_time = 0
+        if hit_body ~= 1 and hit_body ~= nil then 
+            local spawn_point = VecAdd(hit_point, VecScale(normal, PB_.joint_offset))
+            local spawn_quat = quat_between_vecs(Vec(0,1,0), VecScale(normal, -1))
+            trans = Transform(spawn_point, spawn_quat)
         else
-            if hit_body ~= 1 and hit_body ~= nil then 
-                local spawn_point = VecAdd(hit_point, VecScale(normal, PB_.joint_offset))
-                local spawn_quat = quat_between_vecs(Vec(0,1,0), VecScale(normal, -1))
-                trans = Transform(spawn_point, spawn_quat)
-            else
-                trans = Transform(hit_point, QuatEuler(0,0,0))
-            end
-            local booster = inst_booster(trans)
-            table.insert(boosters, booster)
-            PlaySound(spawn_sound,trans.pos, 10)
-            table.insert(PB_.outlines, booster.mount)
-            table.insert(PB_.outlines, booster.bell)
-            PB_.outline_time = 0
-            PB_.editing_wp = true
+            trans = Transform(hit_point, QuatEuler(0,0,0))
         end
+        local booster = inst_booster(trans)
+        table.insert(PB_.boosters, booster)
+        PlaySound(spawn_sound,trans.pos, 10)
+        table.insert(PB_.outlines, booster.mount)
+        table.insert(PB_.outlines, booster.bell)
+        PB_.outline_time = 0
+        PB_.wp_cursor_on = true
 	end
 end
 
 function booster_ignition_toggle()
-    for i = 1, #boosters do
-        local booster = boosters[i]
-        if not booster.ignition and booster.waypoint ~= nil then 
-            booster.ignition = true
-        else
-            booster.ignition = false
-        end
+    for i = 1, #PB_.boosters do
+        local booster = PB_.boosters[i]
+        booster.ignition = not booster.ignition
+    end
+end
+
+function fly_to_target()
+    for i = 1, #PB_.boosters do
+        local booster = PB_.boosters[i]
+        booster.waypoint = PB_.wp_cursor
+        booster.ignition = true
     end
 end
 
@@ -191,78 +158,45 @@ function update_control(booster, dt)
     local v_actual = QuatRotateVec(q_actual, Vec(0, 1, 0))
     local x_a, y_a, z_a = GetQuatEuler(q_actual)
     local vel = GetBodyVelocity(booster.mount)
-    local q_to_target = Quat()
 
-    -- set attitude
-    -- waypoint goverened flight
-    if booster.nav_mode == nav_mode.fly then 
-        -- fly right at the waypoint
-        local p_target = booster.waypoint.pos 
-        local v_target = VecNormalize(VecSub(p_target, booster.t_mount.pos))
-        q_to_target = quat_between_vecs(v_actual, v_target)
-    elseif booster.nav_mode == nav_mode.hover then
-        -- orient straight up
-        q_to_target = quat_between_vecs(v_actual, Vec(0, 1, 0))
-        -- adjust gimbal for lateral correction
-        local lat_target = VecAdd(booster.waypoint.pos, Vec(0, mount_top[2] + 10, 0))
-        local lat_delta = VecSub(lat_target, mount_top)
-        local lat_x_pid = PID(booster.lat_x_pid, 0, lat_delta[1])
-        local lat_z_pid = PID(booster.lat_z_pid, 0, lat_delta[3])
-        local v_lat = VecNormalize(Vec(lat_x_pid, lat_target[2], lat_z_pid))
-        local q_lat = quat_between_vecs(v_lat, Vec(0, 1, 0))
-        local q_lat = limit_quat(q_lat, PB_.lat_gim_lim)
-        q_to_target = quat_add(q_to_target, q_lat)
+    -- gimbal control
+    local v_target = Vec()
+    if booster.waypoint ~= nil then
+        -- fly right at the waypoint 
+        v_target = VecNormalize(VecSub(booster.waypoint.pos, mount_top))
+    else
+        v_target = booster.v_home
     end
-    if VecLength(VecSub(booster.waypoint.pos, booster.t_mount.pos)) <= booster.waypoint.rad then 
-        -- arrived at the waypoint
-        if booster.nav_mode ~= nav_mode.hover or boosetr.waypoint.on_ground then 
-            -- if flying at the wp or it's on the ground then cut engine
-            booster.ignition = false
-        end
-    end 
-    if not booster.ignition then return end -- in case we've just shut down
-    -- gimble converge on guide attitude
+    local q_to_target = quat_between_vecs(v_actual, v_target)
     local x_s, y_s, z_s = GetQuatEuler(q_to_target)
     booster.gimbal = QuatEuler(
-        bracket_value(PID(booster.att_x_pid, x_s, x_a), PB_.gim_lim, -PB_.gim_lim),
-        bracket_value(PID(booster.att_y_pid, y_s, y_a), PB_.gim_lim, -PB_.gim_lim),
-        bracket_value(PID(booster.att_z_pid, z_s, z_a), PB_.gim_lim, -PB_.gim_lim)
-    )    
+        bracket_value(PID(booster.att_x_pid, x_s, x_a), PB_.att_gim_lim, -PB_.att_gim_lim),
+        bracket_value(PID(booster.att_y_pid, y_s, y_a), PB_.att_gim_lim, -PB_.att_gim_lim),
+        bracket_value(PID(booster.att_z_pid, z_s, z_a), PB_.att_gim_lim, -PB_.att_gim_lim)
+    ) 
 
-    -- impulse converge on altitude
-    if booster.nav_mode == nav_mode.hover then 
-        -- constant asc/desc 
-        local sign = 1
-        if mount_top[2] > booster.waypoint.pos[2] then sign = -1 end
-        local vel_set = (booster.waypoint.degree * sign)
-        local vel_diff = vel[2] - vel_set
-        local i_pid = PID(booster.i_pid, 0, vel_diff) / 100
-        booster.impulse = bracket_value(booster.impulse + i_pid, PB_.att_impulse, PB_.impulse_hover_min)
-    elseif booster.nav_mode == nav_mode.fly then
-        -- constant impulse 
-        booster.impulse = booster.waypoint.degree
-    end
-
-    if DEBUG_MODE then 
-        DebugLine(booster.t_mount.pos, VecAdd(booster.t_mount.pos, QuatRotateVec(q_actual, Vec(0, 10, 0))))
-        DebugLine(booster.t_mount.pos, VecAdd(booster.t_mount.pos, QuatRotateVec(q_to_target, Vec(0, 10, 0))), 0, 1, 0)
-        DebugLine(booster.t_mount.pos, VecAdd(booster.t_mount.pos, QuatRotateVec(booster.gimbal, Vec(0, 10, 0))), 0, 0, 1)
-    end
+    -- check if arrived at target
+    if booster.waypoint ~= nil and 
+        VecLength(VecSub(booster.waypoint.pos, mount_top)) <= booster.waypoint.rad then 
+        -- arrived at the waypoint
+        booster.ignition = false
+    end 
 end
 
 function waypoint_edit_tick(dt)
-    if PB_.editing_wp then 
-        local pos = nil
+    if PB_.wp_cursor_on then 
         local camera = GetPlayerCameraTransform()
         local shoot_dir = TransformToParentVec(camera, Vec(0, 0, -1))
-        local hit, dist, normal, shape = QueryRaycast(camera.pos, shoot_dir, PB_.edit_wp_dist, 0.025, false)
+        local hit, dist, normal, shape = QueryRaycast(camera.pos, shoot_dir, 2000)
         if hit then
-            pos =  VecAdd(camera.pos, VecScale(shoot_dir, dist))
+            local hit_point = VecAdd(camera.pos, VecScale(shoot_dir, dist))
+            PB_.wp_cursor = inst_waypoint(hit_point, 10)
+            draw_waypoint(PB_.wp_cursor)
         else
-            pos =  VecAdd(camera.pos, VecScale(shoot_dir, PB_.edit_wp_dist))
-        end        
-        PB_.edit_wp = inst_waypoint(pos, PB_.edit_wp_rad)
-        draw_waypoint(PB_.edit_wp)
+            PB_.wp_cursor = nil
+            local square_pos = TransformToParentPoint(camera, Vec(0, 0, -1))
+            draw_square(Transform(square_pos, QuatRotateQuat(camera.rot, QuatEuler(90, 0, 0))), 0.2, 1, 0, 0)
+        end
     end
 end
 
@@ -275,8 +209,8 @@ function booster_tick(dt)
     else
         PB_.outlines = {}
     end
-    for b = 1, #boosters do
-        local booster = boosters[b]
+    for b = 1, #PB_.boosters do
+        local booster = PB_.boosters[b]
         booster.t_bell = GetBodyTransform(booster.bell)
         booster.t_mount = GetBodyTransform(booster.mount)
         if booster.waypoint ~= nil then 
@@ -288,8 +222,7 @@ function booster_tick(dt)
             local booster_trans = GetBodyTransform(booster.bell)
             local l_inj_center = PB_.inj_center
             local w_inj_center = TransformToParentPoint(booster_trans, l_inj_center)
-            local total_thrust = 0
-            local magnitude = TOOL.BOOSTER.pyro.ff.max_force * booster.impulse
+            local magnitude = TOOL.BOOSTER.pyro.ff.max_force / 2
             local force_mag = magnitude * booster.impulse * PB_.impulse_const
             local pretty_color = blend_color(math.random(), 
                 HSVToRGB(TOOL.BOOSTER.pyro.color_hot), 
@@ -344,8 +277,6 @@ end
 
 function draw_waypoint(waypoint)
     draw_waypoint_end(waypoint.pos, waypoint.rad, Vec(0, 1, 0))
-    draw_waypoint_end(waypoint.ground, 1, Vec(1, 0, 0))
-    DrawLine(waypoint.pos, waypoint.ground)
 end
 
 function draw_waypoint_end(pos, rad, color)

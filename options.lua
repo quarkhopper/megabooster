@@ -6,9 +6,7 @@ function init()
         KEY.IGNITION,
         KEY.CLEAR,
         KEY.REATTACH,
-        KEY.ADJ_DIST,
-        KEY.ADJ_RAD, 
-        KEY.ASSIGN,
+        KEY.SELECT_TARGET,
         KEY.OPTIONS,
         KEY.DEBUG}
     updating_key = nil

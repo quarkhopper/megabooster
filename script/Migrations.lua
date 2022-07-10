@@ -21,7 +21,12 @@ function migrate_option_set(oSet)
         oSet.options["gimbal_strength"] = nil
         oSet.gimbal_stiffness = nil
         oSet.options["gimbal_stiffness"] = nil 
-
+        oSet.kp = nil
+        oSet.options["kp"] = nil
+        oSet.ki = nil
+        oSet.options["ki"] = nil
+        oSet.kd = nil
+        oSet.options["kd"] = nil
 
         -- ensure these exist
         if oSet.impulse == nil then 
@@ -86,36 +91,7 @@ function migrate_option_set(oSet)
             oSet.gimbal_max_angle.range.upper = 60
             oSet.gimbal_max_angle.step = 0.1
         end
-        if oSet.kp == nil then 
-            oSet.kp = create_option(
-                oSet.numeric, 
-                3,
-                "kp",
-                "Gimbal PID Kp")
-            oSet.kp.range.lower = 0
-            oSet.kp.range.upper = 5
-            oSet.kp.step = 0.001
-        end
-        if oSet.ki == nil then 
-            oSet.ki = create_option(
-                oSet.numeric, 
-                0.001,
-                "ki",
-                "Gimbal PID Ki")
-            oSet.ki.range.lower = 0
-            oSet.ki.range.upper = 5
-            oSet.ki.step = 0.001
-        end
-        if oSet.kd == nil then 
-            oSet.kd = create_option(
-                oSet.numeric, 
-                0.4,
-                "kd",
-                "Gimbal PID Kd")
-            oSet.kd.range.lower = 0
-            oSet.kd.range.upper = 5
-            oSet.kd.step = 0.001
-        end
+
 
         -- order
         local order = {

@@ -81,6 +81,19 @@ function quat_between_vecs(v1, v2)
     return Quat(a[1], a[2], a[3], w)
 end
 
+function quat_to_string(quat)
+    local x, y, z = GetQuatEuler(quat)
+    return x.." : "..y.." : "..z
+end
+
+function limit_vec(vec, lim)
+    return Vec(
+        bracket_value(vec[1], lim, -lim),
+        bracket_value(vec[2], lim, -lim),
+        bracket_value(vec[3], lim, -lim)
+    )
+end
+
 function limit_quat(quat, angle)
     local x, y, z = GetQuatEuler(quat)
     return QuatEuler(
@@ -293,6 +306,19 @@ function get_enum_key(value, enumTable)
     for k, v in pairs(enumTable) do
         if v == value then
             return k
+        end
+    end
+end
+
+function cycle_enum(_enum, current)
+    local keys, values = get_keys_and_values(_enum)
+    for i = 1, #values do
+        if values[i] == current then 
+            if i == #values then 
+                return values[1] 
+            else
+                return values[i + 1]
+            end
         end
     end
 end

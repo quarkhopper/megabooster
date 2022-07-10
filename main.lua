@@ -51,7 +51,7 @@ function draw(dt)
 
 	-- on screen display to help the player remember what keys do what
 	UiPush()
-		UiTranslate(0, UiHeight() - UI.OPTION_TEXT_SIZE * 9)
+		UiTranslate(0, UiHeight() - UI.OPTION_TEXT_SIZE * 6)
 		UiAlign("left")
 		UiFont("bold.ttf", UI.OPTION_TEXT_SIZE)
 		UiTextOutline(0,0,0,1,0.5)
@@ -60,26 +60,9 @@ function draw(dt)
 		UiText(KEY.CLEAR.key.." to clear all boosters", true)
 		UiText(KEY.IGNITION.key.." for ignition toggle", true)
 		UiText(KEY.REATTACH.key.." to magnetize booster mounts to objects", true)
-		UiText("hold "..KEY.ADJ_DIST.key.." + mousewheel to adjust waypoint distance", true)
-		UiText("hold "..KEY.ADJ_RAD.key.." + mousewheel to adjust waypoint radius", true)
-		UiText(KEY.ASSIGN.key.." to assign waypoint to new boosters", true)
+		UiText("hold "..KEY.SELECT_TARGET.key.." to select a target", true)
 		UiText(KEY.OPTIONS.key.." for booster options", true)
-		UiText(KEY.DEBUG.key.." for physics debug")
 	UiPop()
-
-	if DEBUG_MODE then 
-		-- Debug display
-		UiPush()
-			UiTranslate(UiWidth() - 10, UiHeight() - UI.OPTION_TEXT_SIZE * 2 )
-			UiAlign("right")
-			UiFont("bold.ttf", UI.OPTION_TEXT_SIZE)
-			UiTextOutline(0,0,0,1,0.5)
-			UiColor(1,1,1)
-			UiText("field energy = "..tostring(TOOL.BOOSTER.pyro.ff.energy), true)
-			local num_field_points = TOOL.BOOSTER.pyro.ff.num_points
-			UiText("field points = "..tostring(num_field_points), true)
-		UiPop()
-	end
 end
 
 -- draw the option editor
@@ -347,13 +330,23 @@ function handle_input(dt)
 				primary_shoot_timer == 0 and
 				InputDown("LMB") and 
 				not InputDown("RMB") then
-					spawn_or_select_booster()
+					if PB_.wp_cursor_on and PB_.wp_cursor ~= nil then 
+						fly_to_target()
+					else
+						spawn_booster()
+					end
 					primary_shoot_timer = primary_shoot_delay
 				end
 				
+				if InputDown(KEY.SELECT_TARGET.key) and #PB_.boosters > 0 then 
+					PB_.wp_cursor_on = true
+				else
+					PB_.wp_cursor_on = false
+				end
+
 				-- ignition
 				if InputPressed(KEY.IGNITION.key) then
-					if #boosters > 0 then
+					if #PB_.boosters > 0 then
 						booster_ignition_toggle()
 					end
 				end
@@ -365,31 +358,6 @@ function handle_input(dt)
 						magnetize_boosters()
 					end	
 					reattach_key_wait = 0
-				end
-
-				-- Adjust waypoint distance and radius
-				if InputDown(KEY.ADJ_DIST.key) or InputDown(KEY.ADJ_RAD.key) then 
-					SetBool("game.input.locktool", true)
-					if InputDown(KEY.ADJ_DIST.key) then 
-						PB_.edit_wp_dist = bracket_value(PB_.edit_wp_dist + InputValue("mousewheel"), 2000, 0)
-					elseif InputDown(KEY.ADJ_RAD.key) then 
-						PB_.edit_wp_rad = bracket_value(PB_.edit_wp_rad + InputValue("mousewheel"), 100, 0)
-					end
-				else
-					SetBool("game.input.locktool", false)
-				end
-
-				--TODO: only assign to selected booster if there is one,
-				-- only enter editing mode if there's a booster selcted,
-				-- autoselect a new booster
-				
-				-- assign waypoint to booster
-				if InputPressed(KEY.ASSIGN.key) then 
-					for i = 1, #boosters do
-						local booster = boosters[i]
-						booster.waypoint = PB_.edit_wp
-					end
-					PB_.editing_wp = false
 				end
 
 				-- debug mode

@@ -34,11 +34,10 @@ KEY = {}
 KEY.DEBUG = setup_keybind("Debug mode", "debug mode", "F11")
 KEY.IGNITION = setup_keybind("Ignition toggle", "ignition", "I")
 KEY.REATTACH = setup_keybind("Magnetize boosters", "reattach", "M")
+KEY.SELECT_TARGET = setup_keybind("Select target", "target", "E")
 KEY.CLEAR = setup_keybind("Clear boosters", "clear", "C")
 KEY.OPTIONS = setup_keybind("Options", "options", "O")
-KEY.ADJ_DIST = setup_keybind("Adjust waypoint distance", "wp_dist", "ctrl")
-KEY.ADJ_RAD = setup_keybind("Adjust waypoint radius", "wp_rad", "alt")
-KEY.ASSIGN = setup_keybind("Asign waypoint", "wp_assign", "P")
+
 
 CONSTS = {}
 CONSTS.FLAME_COLOR_DEFAULT = Vec(7.7, 1, 0.8)
