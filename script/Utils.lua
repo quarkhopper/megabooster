@@ -349,7 +349,7 @@ function get_shoot_hit(max_range, pass_through_glass)
     pass_through_glass = pass_through_glass or true
     local camera = GetPlayerCameraTransform()
 	local shoot_dir = TransformToParentVec(camera, Vec(0, 0, -1))
-	local hit, dist, normal, shape = QueryRaycast(camera.pos, shoot_dir, max_range, 0.025, pass_through_glass)
+	local hit, dist, normal, shape = QueryRaycast(camera.pos, shoot_dir, max_range, 0, pass_through_glass)
 	if hit then
         return VecAdd(camera.pos, VecScale(shoot_dir, dist)), normal, shape
     else
